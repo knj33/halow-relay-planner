@@ -1,0 +1,526 @@
+/* ======================================================================================
+   Presentation engine (src/present/). Loaded with the presenter chunk only.
+   Sizes inside .pz-stage are logical px on the fixed 1920×1080 stage, which is scaled to
+   the screen by one transform. Only opacity and transform ever animate.
+   See docs/PRESENTATION.md.
+   ====================================================================================== */
+
+/* Under a stage slide the planner is skipped entirely: no layout, no paint, no focus. */
+.app.is-covered > :not(.pz-root) {
+  visibility: hidden;
+  content-visibility: hidden;
+}
+/* No page scrollbar or scroll behind the deck. */
+html:has(.app.is-presenting),
+html:has(.app.is-presenting) body {
+  overflow: hidden;
+}
+
+.pz-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  outline: none;
+  color: var(--text);
+  font-family: var(--display);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-y;
+}
+.pz-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--pz-bg, #0d0a08);
+  transition: opacity 360ms ease;
+}
+.pz-stage-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  contain: strict;
+}
+.pz-stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+.pz-slide {
+  position: absolute;
+  inset: 0;
+  padding: 120px 150px;
+  contain: layout paint style;
+  will-change: transform, opacity;
+  opacity: 0;
+  visibility: hidden;
+  /* visibility flips after the move, so a leaving slide finishes animating and then stops painting */
+  transition:
+    opacity 420ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 520ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    visibility 0s linear 520ms;
+}
+.pz-slide.is-current {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 420ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 520ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    visibility 0s;
+}
+.pz-slide.tr-slide.is-before {
+  transform: translate3d(-90px, 0, 0);
+}
+.pz-slide.tr-slide.is-after {
+  transform: translate3d(90px, 0, 0);
+}
+.pz-slide.tr-rise.is-before {
+  transform: translate3d(0, -60px, 0);
+}
+.pz-slide.tr-rise.is-after {
+  transform: translate3d(0, 60px, 0);
+}
+.pz-slide.tr-none {
+  transition: none;
+}
+/* Reduced motion (unless the planner's Motion setting is On): a quick cross-fade only. */
+@media (prefers-reduced-motion: reduce) {
+  .app:not(.motion-on) .pz-slide {
+    transform: none !important;
+    transition-duration: 160ms, 0s, 0s;
+  }
+  .app:not(.motion-on) .pz-step {
+    transform: none;
+  }
+}
+
+/* ---- fragments ---- */
+.pz-step {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  transition:
+    opacity 360ms ease,
+    transform 420ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.pz-step.is-shown {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---- authoring kit ---- */
+.pz-frame {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 1500px;
+}
+.pz-frame.align-center {
+  justify-content: center;
+}
+.pz-kicker {
+  margin: 0 0 28px;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--salmon-text);
+}
+.pz-title {
+  margin: 0 0 64px;
+  max-width: 24ch;
+  font-size: 84px;
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  color: var(--traverse);
+}
+.pz-body {
+  font-size: 36px;
+  line-height: 1.45;
+  color: var(--text);
+}
+.pz-prose p {
+  margin: 0 0 28px;
+  max-width: 34ch;
+}
+.pz-small {
+  margin-top: 48px;
+  font-size: 26px;
+  color: var(--muted);
+}
+.pz-points {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 34px;
+}
+.pz-points li {
+  position: relative;
+  padding-left: 56px;
+  max-width: 40ch;
+}
+.pz-points li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.68em;
+  width: 28px;
+  height: 1px;
+  background: var(--salmon);
+}
+.pz-columns {
+  display: grid;
+  gap: 96px;
+  align-items: start;
+}
+.pz-figures {
+  display: grid;
+  gap: 56px;
+}
+.pz-figure-value {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 132px;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--traverse);
+}
+.pz-figure-unit {
+  margin-left: 18px;
+  font-size: 48px;
+  color: var(--salmon-text);
+}
+.pz-figure-label {
+  margin: 16px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-strong);
+  font-size: 26px;
+  color: var(--muted);
+}
+.pz-cover {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.pz-cover-title {
+  margin: 0;
+  font-size: 220px;
+  font-weight: 300;
+  line-height: 0.95;
+  letter-spacing: 0.34em;
+  color: var(--traverse);
+}
+.pz-rule {
+  display: block;
+  width: 360px;
+  height: 1px;
+  margin: 56px 0 44px;
+  background: var(--salmon);
+}
+.pz-cover-sub {
+  margin: 0;
+  font-size: 44px;
+  color: var(--text);
+}
+.pz-cover-meta {
+  margin: 22px 0 0;
+  font-size: 26px;
+  color: var(--muted);
+}
+
+/* ---- live slides: the planner is the slide, the stage only carries a caption card ---- */
+.pz-root.is-live {
+  pointer-events: none;
+}
+.pz-root.is-live .pz-backdrop {
+  opacity: 0;
+}
+.pz-slide.kind-live {
+  padding: 0;
+  background: none !important;
+}
+/* Bottom right: the planner keeps its own panels at the left and its tools at the top right. */
+.pz-caption {
+  position: absolute;
+  right: 150px;
+  bottom: 120px;
+  max-width: 700px;
+  padding: 34px 40px 36px;
+  border: 1px solid var(--line-strong);
+  border-left: 2px solid var(--salmon);
+  background: rgba(13, 10, 8, 0.94);
+  pointer-events: auto;
+}
+.pz-caption-title {
+  margin: 0 0 14px;
+  font-size: 40px;
+  font-weight: 400;
+  color: var(--traverse);
+}
+.pz-caption-body {
+  font-size: 26px;
+  line-height: 1.45;
+  color: var(--text);
+}
+.pz-caption-body p {
+  margin: 0;
+}
+
+/* ---- chrome: blanking, progress, controls, panels ---- */
+.pz-blank {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease;
+}
+.pz-root.is-blank .pz-blank {
+  opacity: 1;
+  pointer-events: auto;
+}
+.pz-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(236, 205, 178, 0.08);
+}
+.pz-progress i {
+  display: block;
+  height: 100%;
+  background: var(--salmon);
+  transform-origin: 0 50%;
+  transition: transform 420ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.pz-controls {
+  position: absolute;
+  right: 20px;
+  bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  background: rgba(13, 10, 8, 0.92);
+  pointer-events: auto;
+  transition: opacity 300ms ease;
+}
+/* Controls fade out while the pointer rests, unless keyboard focus is inside them. */
+.pz-root.is-idle .pz-controls:not(:focus-within):not(:hover) {
+  opacity: 0;
+}
+.pz-btn {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font: 500 12px var(--display);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.pz-btn.wide {
+  padding: 0 14px;
+}
+.pz-btn:hover:not(:disabled) {
+  border-color: var(--line-strong);
+}
+.pz-btn[aria-pressed='true'] {
+  border-color: var(--salmon);
+  color: var(--salmon-text);
+}
+.pz-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.pz-btn:focus-visible,
+.pz-thumb:focus-visible {
+  outline: 1px solid var(--salmon);
+  outline-offset: 2px;
+}
+.pz-sep {
+  width: 1px;
+  height: 24px;
+  margin: 0 4px;
+  background: var(--line-strong);
+}
+.pz-num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.pz-count {
+  min-width: 72px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text);
+}
+.pz-steps {
+  color: var(--muted);
+}
+.pz-notes {
+  position: absolute;
+  left: 20px;
+  bottom: 18px;
+  width: min(560px, calc(100% - 40px));
+  max-height: 42vh;
+  overflow: auto;
+  padding: 18px 20px;
+  border: 1px solid var(--line-strong);
+  background: rgba(13, 10, 8, 0.96);
+  pointer-events: auto;
+  user-select: text;
+}
+.pz-notes .pz-kicker {
+  margin: 0;
+  font-size: 11px;
+}
+.pz-notes-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+.pz-notes-text {
+  margin: 0 0 10px;
+  font-size: 17px;
+  line-height: 1.5;
+}
+.pz-notes-next {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.pz-overview {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: 40px 40px 100px;
+  background: var(--pz-bg, #0d0a08);
+  pointer-events: auto;
+}
+.pz-overview-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px 24px;
+}
+.pz-thumb {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  /* the planner's global button style is uppercase and tracked; thumbnails must show slides as they are */
+  font: 400 15px/1.5 var(--display);
+  text-transform: none;
+  letter-spacing: normal;
+  min-height: 0;
+  cursor: pointer;
+  /* rows scrolled out of view are not rendered at all */
+  content-visibility: auto;
+  contain-intrinsic-size: 320px 220px;
+}
+.pz-thumb-frame {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.pz-thumb.is-current .pz-thumb-frame {
+  border-color: var(--salmon);
+}
+.pz-thumb:hover .pz-thumb-frame {
+  border-color: var(--line-strong);
+}
+.pz-thumb-stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.pz-thumb-stage .pz-slide,
+.pz-thumb-stage .pz-step {
+  transition: none;
+  will-change: auto;
+}
+.pz-thumb-live {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  padding: 3px 8px;
+  border: 1px solid var(--salmon);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--salmon-text);
+  background: rgba(13, 10, 8, 0.9);
+}
+.pz-thumb-label {
+  font-size: 14px;
+  color: var(--muted);
+}
+.pz-thumb-label .pz-num {
+  margin-right: 6px;
+  color: var(--text);
+}
+.pz-help {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(620px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow: auto;
+  transform: translate(-50%, -50%);
+  padding: 26px 28px;
+  border: 1px solid var(--line-strong);
+  background: rgba(13, 10, 8, 0.98);
+  pointer-events: auto;
+}
+.pz-help dl {
+  margin: 0 0 16px;
+  display: grid;
+  gap: 8px;
+}
+.pz-help dl div {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 16px;
+  font-size: 15px;
+}
+.pz-help dt {
+  font-size: 13px;
+  color: var(--salmon-text);
+}
+.pz-help dd {
+  margin: 0;
+}
+.pz-help-foot {
+  font-size: 14px;
+  color: var(--muted);
+}
+@media (max-width: 640px) {
+  .pz-controls {
+    left: 16px;
+    right: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .pz-help dl div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}

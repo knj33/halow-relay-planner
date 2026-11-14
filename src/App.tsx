@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useShallow } from 'zustand/react/shallow';
+import { usePresentation } from './present/state';
 import { AssumptionsPanel } from './components/AssumptionsPanel';
 import { ComparePanel } from './components/ComparePanel';
 import { EnginePanel } from './components/EnginePanel';
@@ -37,6 +39,28 @@ import { nativeActive, nodeLabels, sameArea, useStore } from './state/store';
 import type { Tool } from './state/store';
 import { runJob } from './worker/client';
 import { whyThisPath } from './whyThisPath';
+import { registerBridge } from './present/bridge';
+import type { PresentationBridge } from './present/bridge';
+import { parseHash } from './present/engine';
+
+// The presenter and its decks load only when a presentation opens.
+const Presenter = lazy(() => import('./present/Presenter'));
+
+// Setup panels read the store themselves; memo stops every App render from re-rendering them.
+const NodePanelM = memo(NodePanel);
+const CrewPanelM = memo(CrewPanel);
+const AreaPanelM = memo(AreaPanel);
+const RadioPanelM = memo(RadioPanel);
+const CostPanelM = memo(CostPanel);
+const AssumptionsPanelM = memo(AssumptionsPanel);
+const EMPTY: never[] = [];
+
+/** A callback with a stable identity that always runs the latest closure, so memoised children don't re-render for it. */
+function useStableCallback<A extends unknown[], R>(fn: (...args: A) => R): (...args: A) => R {
+  const ref = useRef(fn);
+  ref.current = fn;
+  return useCallback((...args: A) => ref.current(...args), []);
+}
 
 /** Single-key shortcuts for the map tools (HIG: offer keyboard alternatives to pointer gestures). */
 const TOOL_KEYS: Record<string, Tool> = { v: 'select', a: 'setA', b: 'setB', r: 'relay', s: 'base', w: 'waypoint', z: 'zone', m: 'move', f: 'fail', d: 'delete' };
@@ -111,7 +135,12 @@ function nearestPreset(body: keyof typeof PRESETS, lat: number, lon: number): st
 const fmtCoord = (lat: number, lon: number) => `${Math.abs(lat).toFixed(3)}°${lat >= 0 ? 'N' : 'S'}  ${Math.abs(lon).toFixed(3)}°${lon >= 0 ? 'E' : 'W'}`;
 
 export function App() {
-  const s = useStore();
+  // Everything except the globe's camera centre, which changes while the globe spins and is only read on demand.
+  const s = useStore(useShallow(({ viewCentre: _centre, ...rest }) => rest));
+  const presenting = usePresentation((p) => p.open);
+  const presentingLive = usePresentation((p) => p.live);
+  // While a slide covers the planner, nothing underneath renders.
+  const appVisible = !presenting || presentingLive;
   const [tab, setTab] = useState<Tab>('plan');
   const [view, setView] = useState<View>('globe');
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -126,12 +155,31 @@ export function App() {
     void useStore.getState().probeEngine();
   }, []);
 
+  // Deep links: #/present, #/present/4, #/present/<deck>/4.2 open the presenter on load or when typed.
+  useEffect(() => {
+    const check = () => {
+      const h = parseHash(location.hash);
+      if (h && !usePresentation.getState().open) usePresentation.getState().openDeck(h.deck, h.position);
+    };
+    check();
+    window.addEventListener('hashchange', check);
+    return () => window.removeEventListener('hashchange', check);
+  }, []);
+
   // Tool shortcuts, ignored while typing or with modifier keys held.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName))) return;
+      const pres = usePresentation.getState();
+      // Under a stage slide the planner is hidden: its shortcuts must not change it unseen.
+      if (pres.open && !pres.live) return;
+      if (!pres.open && (e.key === 'p' || e.key === 'P')) {
+        e.preventDefault();
+        pres.openDeck(null);
+        return;
+      }
       if (e.key === 'Escape') {
         const st = useStore.getState();
         if (st.zoneDraft) st.cancelZone();
@@ -298,7 +346,11 @@ export function App() {
     for (const n of nodes) if (!n.enabled) s.updateNode(n.id, { enabled: true });
     setSim(null);
   };
-  const onNodeClick = (id: string) => (s.tool === 'fail' ? failNode(id) : s.nodeClick(id));
+  const onNodeClick = useStableCallback((id: string) => (s.tool === 'fail' ? failNode(id) : s.nodeClick(id)));
+  const onNodeClick3D = useStableCallback((id: string) => (s.tool === 'fail' ? failNode(id) : s.select(id)));
+  const onWaypointClick = useStableCallback((id: string) => s.tool === 'delete' && s.removeWaypoint(id));
+  const onZoneClick = useStableCallback((id: string) => s.tool === 'delete' && s.removeZone(id));
+  const onFirstTiles = useStableCallback(() => setGlobeReady(body));
   const globeSurvey = useMemo(() => (layers ? { layers, walk: walk?.points ?? null } : null), [layers, walk]);
 
   // Coverage maps and the architecture comparison run in the worker, debounced.
@@ -434,14 +486,42 @@ export function App() {
     }
   };
 
-  const onSurveyPick = (x: number, y: number) => {
-    if (!terrainArea) return;
-    const p = gridToGeo(terrainArea, x, y, BODIES[body].radiusM);
-    s.surfaceClick(p.lat, p.lon);
+  const onSurveyPick = useCallback(
+    (x: number, y: number) => {
+      if (!terrainArea) return;
+      const p = gridToGeo(terrainArea, x, y, BODIES[body].radiusM);
+      useStore.getState().surfaceClick(p.lat, p.lon);
+    },
+    [terrainArea, body],
+  );
+
+  // What slides may do to the planner. The ref always holds this render's closures, so a slide
+  // acting later (after a failure re-plans the route, say) sees the current network.
+  const bridgeImpl = useRef<PresentationBridge | null>(null);
+  bridgeImpl.current = {
+    loadPremadeDemo: async () => {
+      await useStore.getState().loadPremadeDemo();
+      setView('survey');
+    },
+    setView: (v) => (v === 'globe' ? setView('globe') : openSurvey(v)),
+    planRelays: onPlan,
+    randomFailure,
+    restoreAll,
   };
+  useEffect(
+    () =>
+      registerBridge({
+        loadPremadeDemo: () => bridgeImpl.current!.loadPremadeDemo(),
+        setView: (v) => bridgeImpl.current!.setView(v),
+        planRelays: () => bridgeImpl.current!.planRelays(),
+        randomFailure: () => bridgeImpl.current!.randomFailure(),
+        restoreAll: () => bridgeImpl.current!.restoreAll(),
+      }),
+    [],
+  );
 
   return (
-    <div className={`app${motion ? ' motion-on' : ''}`} data-body={body}>
+    <div className={`app${motion ? ' motion-on' : ''}${presenting ? ' is-presenting' : ''}${presenting && !presentingLive ? ' is-covered' : ''}`} data-body={body}>
       <span className="guide-line left" aria-hidden="true" />
       <span className="guide-line right" aria-hidden="true" />
 
@@ -475,6 +555,9 @@ export function App() {
           </span>
           <span className="num coords">{coords}</span>
           <div className="mast-files">
+            <button type="button" className="cap-link" onClick={() => usePresentation.getState().openDeck(null)} title="Open the presentation (P)" aria-keyshortcuts="P">
+              Present
+            </button>
             <button type="button" className="cap-link" onClick={onExport} disabled={!terrainMeta || !area}>
               Export
             </button>
@@ -513,6 +596,7 @@ export function App() {
       <section className="map-frame" aria-label="Map">
         <div className={`globe-layer${view === 'globe' ? '' : ' is-hidden'}`} aria-hidden={view !== 'globe'}>
           <GlobeView
+            active={view === 'globe' && appVisible}
             body={body}
             area={area}
             grid={gridReady ? terrain : null}
@@ -521,8 +605,8 @@ export function App() {
             links={shownLinks}
             route={net.route}
             criticalIds={net.criticalIds}
-            satellites={terrain ? satellites : []}
-            stations={gridReady ? (analysis?.stations ?? []) : []}
+            satellites={terrain ? satellites : EMPTY}
+            stations={gridReady ? (analysis?.stations ?? EMPTY) : EMPTY}
             coverage={coverage}
             survey={globeSurvey}
             reliefScale={s.globeRelief}
@@ -532,7 +616,7 @@ export function App() {
             onSurfaceClick={s.surfaceClick}
             onNodeClick={onNodeClick}
             onCameraCentre={s.setViewCentre}
-            onFirstTiles={() => setGlobeReady(body)}
+            onFirstTiles={onFirstTiles}
           />
         </div>
 
@@ -551,21 +635,22 @@ export function App() {
             zoneDraft={draftGrid}
             safetyLayer={trav?.layer ?? null}
             sim={sim}
-            motion={motion}
+            motion={motion && appVisible}
             walkSeq={trav?.seq ?? 0}
-            stations={analysis?.stations ?? []}
+            stations={analysis?.stations ?? EMPTY}
             coverage={coverage}
             selectedId={s.selectedId}
             placing={!['select', 'delete', 'fail'].includes(s.tool)}
             onPick={onSurveyPick}
             onNodeClick={onNodeClick}
-            onWaypointClick={(id) => s.tool === 'delete' && s.removeWaypoint(id)}
-            onZoneClick={(id) => s.tool === 'delete' && s.removeZone(id)}
+            onWaypointClick={onWaypointClick}
+            onZoneClick={onZoneClick}
             onFinishZone={s.finishZone}
           />
         )}
         {view === '3d' && gridReady && terrain && layers && (
           <Survey3D
+            active={appVisible}
             grid={terrain}
             layers={layers}
             radiusM={env.radiusM * env.kFactor}
@@ -576,7 +661,7 @@ export function App() {
             walk={walk}
             heights={heights}
             selectedId={s.selectedId}
-            onNodeClick={(id) => (s.tool === 'fail' ? failNode(id) : s.select(id))}
+            onNodeClick={onNodeClick3D}
           />
         )}
         {view !== 'globe' && !gridReady && s.terrainStatus !== 'loading' && s.terrainStatus !== 'error' && (
@@ -843,11 +928,11 @@ export function App() {
               </h2>
               <div className="setup-grid">
                 <ToolPanel onPlan={() => void onPlan()} canPlan={!planBlockedReason} planBlockedReason={planBlockedReason} />
-                <NodePanel />
-                <CrewPanel />
-                <AreaPanel />
-                <RadioPanel />
-                <CostPanel />
+                <NodePanelM />
+                <CrewPanelM />
+                <AreaPanelM />
+                <RadioPanelM />
+                <CostPanelM />
               </div>
             </section>
           </>
@@ -867,7 +952,7 @@ export function App() {
         )}
         {tab === 'assumptions' && (
           <div className="page-section">
-            <AssumptionsPanel body={body} terrain={terrainMeta} />
+            <AssumptionsPanelM body={body} terrain={terrainMeta} />
           </div>
         )}
         {tab === 'engine' && (
@@ -884,6 +969,12 @@ export function App() {
         </span>
         <span className="cap small">{BODIES[body].name}</span>
       </footer>
+
+      {presenting && (
+        <Suspense fallback={<div role="status" aria-label="Opening the presentation" style={{ position: 'fixed', inset: 0, zIndex: 1000, background: '#0d0a08' }} />}>
+          <Presenter />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as R3FTiles from '3d-tiles-renderer/r3f';
 import * as TilePlugins from '3d-tiles-renderer/plugins';
 import { Line } from '@react-three/drei';
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import * as THREE from 'three';
 import {
@@ -222,6 +222,11 @@ function Label({ text, color, position, dim, ring }: { text: string; color: stri
 }
 
 export interface GlobeViewProps {
+  /**
+   * False while the globe is hidden (another view, or a presentation slide covers it): the render
+   * loop stops completely. When true it renders on demand, only when the camera, tiles or props change.
+   */
+  active: boolean;
   body: BodyId;
   area: PlanningArea | null;
   grid: HeightGrid | null;
@@ -842,10 +847,12 @@ interface RigProps {
 function CameraRig({ radiusM, fly, resetSignal, onCameraCentre, onFirstTiles }: RigProps) {
   const tiles = useContext(TilesRendererContext) as any;
   const { camera, gl } = useThree();
+  const invalidate = useThree((st) => st.invalidate);
   const controls = useRef<any>(null);
   const anim = useRef<{ from: THREE.Vector3; to: THREE.Vector3; target: THREE.Vector3; up: THREE.Vector3; t: number } | null>(null);
   const lastCentre = useRef(0);
   const reported = useRef(false);
+  const trailing = useRef(0);
 
   const start = useMemo(
     () => new THREE.Vector3(radiusM * 3.1, radiusM * 0.9, radiusM * 0.6),
@@ -871,6 +878,7 @@ function CameraRig({ radiusM, fly, resetSignal, onCameraCentre, onFirstTiles }: 
     const to = surface.clone().addScaledVector(normal, dist).addScaledVector(east, dist * 0.42);
     anim.current = { from: camera.position.clone(), to, target: surface, up: normal.clone(), t: 0 };
     if (controls.current) controls.current.enabled = false;
+    invalidate();
   };
 
   useEffect(() => {
@@ -882,13 +890,17 @@ function CameraRig({ radiusM, fly, resetSignal, onCameraCentre, onFirstTiles }: 
     if (!resetSignal) return;
     anim.current = { from: camera.position.clone(), to: start.clone(), target: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), t: 0 };
     if (controls.current) controls.current.enabled = false;
+    invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetSignal]);
+  useEffect(() => () => window.clearTimeout(trailing.current), []);
 
   useFrame((_, dt) => {
     const a = anim.current;
     if (a) {
-      a.t = Math.min(1, a.t + dt / 1.4);
+      // The canvas renders on demand: keep asking for frames until the flight lands.
+      invalidate();
+      a.t = Math.min(1, a.t + Math.min(dt, 0.1) / 1.4);
       const k = a.t * a.t * (3 - 2 * a.t);
       camera.position.lerpVectors(a.from, a.to, k);
       camera.up.copy(a.up);
@@ -904,7 +916,12 @@ function CameraRig({ radiusM, fly, resetSignal, onCameraCentre, onFirstTiles }: 
     }
     if (!tiles) return;
     const now = performance.now();
-    if (now - lastCentre.current < 600) return;
+    if (now - lastCentre.current < 600) {
+      // Frames stop when the camera rests, so schedule one more to report where it came to rest.
+      window.clearTimeout(trailing.current);
+      trailing.current = window.setTimeout(() => invalidate(), 650);
+      return;
+    }
     lastCentre.current = now;
     const ray = new THREE.Raycaster();
     ray.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -985,8 +1002,20 @@ function TileCacheBoost() {
   return null;
 }
 
-export function GlobeView(props: GlobeViewProps) {
-  const { body, area, grid, reliefScale, fly, resetSignal, nodes, labels, links, route, criticalIds, satellites, stations, coverage, selectedId } = props;
+/** Draw one frame when the globe becomes visible again (frameloop 'never' → 'demand' alone does not). */
+function WakeOnShow({ active }: { active: boolean }) {
+  const invalidate = useThree((st) => st.invalidate);
+  useEffect(() => {
+    if (active) invalidate();
+  }, [active, invalidate]);
+  return null;
+}
+
+/** Memoised: App re-renders often, the globe only needs to when its own inputs change. */
+export const GlobeView = memo(GlobeViewImpl);
+
+function GlobeViewImpl(props: GlobeViewProps) {
+  const { active, body, area, grid, reliefScale, fly, resetSignal, nodes, labels, links, route, criticalIds, satellites, stations, coverage, selectedId } = props;
   const R = BODIES[body].radiusM;
   // Earth keeps the library's WGS84 ellipsoid; the Moon and Mars use a sphere of the body radius.
   const radiusArgs = useMemo(() => ({ radius: body === 'earth' ? null : R }), [body, R]);
@@ -1016,10 +1045,12 @@ export function GlobeView(props: GlobeViewProps) {
       key={body}
       camera={{ position: [R * 3.1, R * 0.9, R * 0.6], fov: 40, near: R * 0.0004, far: R * 40 }}
       dpr={[1, 2]}
+      frameloop={active ? 'demand' : 'never'}
       style={{ cursor: 'crosshair' }}
       aria-label={`Interactive globe of the ${BODIES[body].name}. Click the surface to place endpoints and relays, drag to spin, scroll to zoom.`}
       role="img"
     >
+      <WakeOnShow active={active} />
       <Background />
       <ambientLight intensity={body === 'earth' ? 1.5 : 0.9} />
       <directionalLight position={[R * 5, R * 2.5, R * 3]} intensity={body === 'earth' ? 2.2 : 3.2} />

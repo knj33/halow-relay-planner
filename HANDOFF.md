@@ -1,6 +1,6 @@
 # Handoff
 
-For the next agent (or person) picking up the HaLow Relay Planner. Last updated 2026-11-14.
+For the next agent (or person) picking up the HaLow Relay Planner. Last updated 2026-11-15.
 
 **Read in this order:** this file, then `CLAUDE.md` (the authoritative architecture and conventions; long but worth it), then `PROJECT_OVERVIEW.md` if you want the product background. `.claude/memory/` holds the Claude memory from the sessions that built this; see *Claude memory* below.
 
@@ -15,10 +15,13 @@ Node 20 or newer (built with 24.18).
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # Vitest, 113 tests, no network
+npm test           # Vitest, 128 tests, no network
 npm run typecheck
 npm run build
+npm run preview    # production build on :4173; judge smoothness here
 ```
+
+To see the presentation engine, open `http://localhost:5173/#/present` (or click **Present** in the masthead, or press `P`).
 
 Fastest way to see everything: open the app, click **Demo** (next to Globe in the map's top-left panel). It loads the bundled 200 km Mars scenario instantly, with no network: relays already planned, crew path drawn, and "Why this path" shown.
 
@@ -39,6 +42,8 @@ All of this is in place, tested and documented in `CLAUDE.md`.
 | Safe and covered crew path: A* with cost tiers hazard ≫ no signal ≫ effort; gaps and hazards flagged | `safeTraverse`, `coverageField`, `hazardClasses` |
 | "Why this path" text, built from measured facts so it is correct for any input | `explainTraverse` + `src/whyThisPath.ts` |
 | Failure simulation: pick a node (F) or random failure; animated go-dark, reroute, signal flow; Motion On/Auto/Off | `Sim` in `src/App.tsx`, `SimView` in `SurveyMap.tsx` |
+| Presentation engine: PowerPoint-style decks inside the site (builds, transitions, overview, notes, clicker keys, deep links, two-window sync) plus **live slides** that drive the planner. Only a sample deck exists; the real talk is not written yet | `src/present/`, guide in `docs/PRESENTATION.md` |
+| Performance pass for CPU-bound machines: globe/3D render on demand and stop when hidden, map gestures move a pre-drawn layer on the compositor, no blur filters, memoised components | `docs/PERFORMANCE.md` |
 
 ## How the work was verified
 
@@ -46,6 +51,7 @@ Every feature was checked in a real browser with the Chrome DevTools MCP tools (
 
 ### Gotchas that cost time
 
+- **Judge smoothness on the production build** (`npm run build && npm run preview`). The dev server's React is slower by design; `vite.config.ts` already switches off its most expensive part (`console.createTask`), see `docs/PERFORMANCE.md`.
 - **Background tabs are throttled** to about one frame per 2 s. If frame-time measurements look terrible, bring the tab to the front (`select_page` with `bringToFront`) before measuring.
 - **The test Chrome reports `prefers-reduced-motion: reduce`.** The failure-simulation animation is gated by its own Motion setting (default **On**, stored in localStorage `halow.sim.motion`), not by the system flag, because the user explicitly asked for the animation. Other decorative motion still respects the system setting.
 - **USGS range reads fail intermittently in that browser** (`ERR_CACHE_OPERATION_NOT_SUPPORTED`). The loader then falls back to MOLA 463 m or the bundled ~4.9 km/px pyramid. On the coarse data, contours become evenly spaced parallel lines; that is expected, not a bug. The Demo needs no network.
@@ -79,6 +85,7 @@ This fetches 200 km of HRSC + MOLA elevation, plans the network with the app's o
 - **The 3D view is read-only** (it can select and fail nodes, but not place them).
 - **Failure detection isn't modelled.** The failure simulation recomputes from the new state instantly; real detection and convergence delays are not modelled.
 - **200 km is the stress case.** It is above the normal Mars limits (60 km in browser, 120 km with the native engine); the importer accepts exactly 200 km so Demo exports round-trip.
+- **Presentation:** the engine is done, the deck is not. Write the real deck in `src/present/decks/` and put it first in `DECKS` (`docs/PRESENTATION.md`, *Writing a deck*). No PDF export yet.
 - **Possible next steps:** suggest relays automatically for "NO SIGNAL" stretches; time-based EVA limits (suit consumables versus path length); show the crew path in the 3D view with gaps highlighted; a polar terrain source.
 
 ## Claude memory

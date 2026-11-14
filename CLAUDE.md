@@ -22,9 +22,10 @@ npm run dev          # http://localhost:5173 (runs sync:engine first)
 npm test             # Vitest, node environment, tests/**/*.test.ts
 npm run typecheck    # tsc --noEmit
 npm run build        # typecheck + vite build to dist/ (runs sync:engine first)
-npm run preview      # serve dist/ on :4173
+npm run preview      # serve dist/ on :4173 (judge smoothness here, not on the dev server)
 
 npx vitest run tests/routing.test.ts                 # one file
+npx vitest run tests/present.test.ts                 # presentation engine
 npx vitest run -t "bridges a ridge with a single relay"  # one test by name
 ```
 
@@ -136,6 +137,14 @@ The failure simulation (tool `fail`/F, Random failure, Restore all) only toggles
 **3D relief** (`components/Survey3D.tsx`, the "3D relief" view): r3f mesh of the bicubic surface in km, curvature drop applied with the effective radius k·R like the link model, the cached map (≤4096 px level) as texture, dark side walls, links between true antenna heads, and the walking route draped on the surface. The exaggeration slider scales terrain and antennas together, so whether a straight link cuts the terrain stays true. Labels are canvas sprites (drei `Html` failed to mount its first portal under React 19). The view is read-only; nodes are placed in Survey or Globe. The globe's 3d-tiles LRU cache is enlarged (`TileCacheBoost`) so streamed imagery is kept rather than re-fetched.
 
 `engine/survey.ts` (pure): `slopeGrid`, `hillshade`, `surveyLayers` and `walkingRoute` (A* with a slope limit, main thread, through the radio route). In `surveyLayers`, drainage and depressions run on a grid resampled to `sourceResolutionM` (from `TerrainMeta.resolutionM`) when the source is coarser than the grid, and a channel cell must be concave (valley test over a two-cell ring). Without those two rules, bilinear creases and smooth planes produce rows of straight fake channels. Contours stay on the full grid, so on coarse fallback data a source pixel shows as a tilted facet with evenly spaced contours.
+
+### Presentation engine
+
+`src/present/` plays PowerPoint-style decks over the app (full guide: `docs/PRESENTATION.md`). `engine.ts` is the pure navigation core (position `{slide, step}`, builds, clamping, progress, `#/present[/<deck>]/<n>[.<step>]` hash, key/swipe mapping, `fitStage`), tested in `tests/present.test.ts`. `Presenter.tsx` is lazy-loaded by `App` (Present link, `P`, or a `#/present` hash) and lays slides out on a fixed 1920×1080 stage scaled by one transform; only the current slide and its neighbours are mounted, and transitions are CSS opacity/transform between `is-before`/`is-current`/`is-after`. Keys are captured on `window` in the capture phase. Decks live in `src/present/decks/` (`DECKS[0]` is the default; only `sample.tsx` exists, the real talk is not written). A `kind: 'live'` slide shows the planner itself under a caption card and drives it through `bridge.ts` (`loadPremadeDemo`, `setView`, `planRelays`, `randomFailure`, `restoreAll`), which `App` registers; slides never touch the store directly. `state.ts` (`usePresentation`) tells `App` whether a stage slide covers the planner: then `.app.is-covered` hides it with `content-visibility`, its tool shortcuts are ignored, and the globe/3D render loops stop. Open windows sync position over `BroadcastChannel('halow-present')`.
+
+### Performance model
+
+The app must stay smooth on CPU-bound machines (full write-up and measurements: `docs/PERFORMANCE.md`). Load-bearing pieces: `GlobeView` and `Survey3D` take `active` and use `frameloop` `'demand'`/`'never'` (call `invalidate()` from any new animation); `App` subscribes with a `useShallow` selector excluding `viewCentre`, and passes memoised children stable callbacks (`useStableCallback`); `SurveyMap` keeps a committed view (React state) and a live gesture view (`liveRef`), moves the overscanned `.survey-stage` with a CSS transform during gestures and commits on pointer-up, 140 ms after the last wheel event, or when the gesture leaves the drawn area; the hover readout writes to the DOM directly; signal pulses have their own SVG layer; no `backdrop-filter`, blur filters or masks on large areas. `vite.config.ts` disables React's dev-only `console.createTask` (re-enable with localStorage `halow.devStacks = '1'`).
 
 ### Globe rendering
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, MouseEvent, PointerEvent } from 'react';
 import { sampleElevation } from '../engine';
 import type { CoverageMap, HeightGrid, NetworkLink, SiteNode, StationBackhaul, SurveyLayers, Traverse } from '../engine';
@@ -93,14 +93,29 @@ function niceLength(raw: number): number {
 
 const fmtLen = (m: number) => (m >= 1000 ? `${m / 1000} km` : `${m} m`);
 
-export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalIds, walk, waypoints, zones, zoneDraft, safetyLayer, sim, motion, walkSeq, stations, coverage, selectedId, placing, onPick, onNodeClick, onWaypointClick, onZoneClick, onFinishZone }: Props) {
+/**
+ * Overscan: the raster and the vector layer are drawn this fraction of the frame beyond each
+ * edge, so a pan shows already-drawn map instead of blank ground until the gesture settles.
+ */
+const OVERSCAN = 0.2;
+/** A wheel or pinch zoom is committed (React re-render + redraw) this long after the last event. */
+const SETTLE_MS = 140;
+
+/** Memoised: App re-renders for many reasons that do not concern the map. */
+export const SurveyMap = memo(SurveyMapImpl);
+
+function SurveyMapImpl({ grid, layers, nodes, labels, links, route, criticalIds, walk, waypoints, zones, zoneDraft, safetyLayer, sim, motion, walkSeq, stations, coverage, selectedId, placing, onPick, onNodeClick, onWaypointClick, onZoneClick, onFinishZone }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lensRef = useRef<HTMLCanvasElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const readoutRef = useRef<HTMLSpanElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
+  // `view` is the committed view: what React rendered and the canvas holds. During a gesture the
+  // live view runs ahead in `liveRef` and is shown by a CSS transform of the drawn stage.
   const [view, setViewRaw] = useState<View | null>(null);
-  const [hover, setHover] = useState<{ elev: number; slope: number } | null>(null);
+  const liveRef = useRef<View | null>(null);
   const [showKey, setShowKey] = useState(false);
   const [showSafety, setShowSafety] = useState(true);
   const W = grid.widthM;
@@ -132,7 +147,17 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
     },
     [box.w, box.h, fit, maxZoom, W, H],
   );
-  const setView = useCallback((v: View | ((p: View) => View)) => setViewRaw((p) => clamp(typeof v === 'function' ? v(p ?? { cx: W / 2, cy: H / 2, zoom: 1 }) : v)), [clamp, W, H]);
+  // Commit a view now (buttons, keys, fit-on-open). Functional updates start from the live view, so they compose with a gesture in flight.
+  const setView = useCallback(
+    (v: View | ((p: View) => View)) =>
+      setViewRaw((p) => {
+        const base = liveRef.current ?? p ?? { cx: W / 2, cy: H / 2, zoom: 1 };
+        const n = clamp(typeof v === 'function' ? v(base) : v);
+        liveRef.current = n;
+        return n;
+      }),
+    [clamp, W, H],
+  );
 
   // A new grid opens as large as possible (filling the frame) while still showing every node.
   const nodesRef = useRef(nodes);
@@ -156,7 +181,11 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
   }, [grid, box.w > 0]);
   // Keep the view valid when the frame resizes.
   useEffect(() => {
-    setViewRaw((v) => (v ? clamp(v) : v));
+    setViewRaw((v) => {
+      const n = v ? clamp(v) : v;
+      liveRef.current = n;
+      return n;
+    });
   }, [clamp]);
 
   const v = view ?? { cx: W / 2, cy: H / 2, zoom: 1 };
@@ -166,6 +195,77 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
   const x0 = v.cx - vw / 2;
   const yTop = v.cy + vh / 2;
   const k = 1 / s; // metres per CSS px
+  // The drawn window, overscan included. Canvas and SVG both cover it; the stage div is offset so the visible window lines up with the frame.
+  const ox = OVERSCAN * vw;
+  const oy = OVERSCAN * vh;
+  const dx0 = x0 - ox;
+  const dyTop = yTop + oy;
+  const dvw = vw + 2 * ox;
+  const dvh = vh + 2 * oy;
+  const stageW = box.w * (1 + 2 * OVERSCAN);
+  const stageH = box.h * (1 + 2 * OVERSCAN);
+
+  // ---------- gesture preview: transform the drawn stage, commit when the gesture settles ----------
+  const committedRef = useRef(v);
+  committedRef.current = v;
+  const frameReq = useRef(0);
+  const settleTimer = useRef(0);
+  const applyPreview = useCallback(() => {
+    frameReq.current = 0;
+    const el = stageRef.current;
+    const l = liveRef.current;
+    const c = committedRef.current;
+    if (!el || !l || box.w <= 0) return;
+    const sc = fit * c.zoom;
+    const sl = fit * l.zoom;
+    const r = sl / sc;
+    const x0c = c.cx - box.w / 2 / sc;
+    const x0l = l.cx - box.w / 2 / sl;
+    const yTc = c.cy + box.h / 2 / sc;
+    const yTl = l.cy + box.h / 2 / sl;
+    const tx = (x0c - x0l) * sl;
+    const ty = (yTl - yTc) * sl;
+    el.style.transform = r === 1 && tx === 0 && ty === 0 ? '' : `translate(${tx}px, ${ty}px) scale(${r})`;
+  }, [box.w, box.h, fit]);
+  // A new commit has been drawn: the preview transform collapses to identity (or to whatever the live view has moved on to).
+  useLayoutEffect(() => {
+    applyPreview();
+  }, [view, applyPreview]);
+  const commit = useCallback(() => {
+    window.clearTimeout(settleTimer.current);
+    const l = liveRef.current;
+    if (l) setViewRaw((p) => (p && p.cx === l.cx && p.cy === l.cy && p.zoom === l.zoom ? p : l));
+  }, []);
+  const preview = useCallback(
+    (next: View, settleMs = SETTLE_MS) => {
+      const l = clamp(next);
+      liveRef.current = l;
+      if (!frameReq.current) frameReq.current = requestAnimationFrame(applyPreview);
+      // Commit early once the visible window leaves the drawn (overscanned) window, so no blank
+      // edge shows, or once a zoom-in has stretched the drawn raster too far to stay sharp.
+      const c = committedRef.current;
+      const sc = fit * c.zoom;
+      const sl = fit * l.zoom;
+      const vwc = box.w / sc;
+      const vhc = box.h / sc;
+      const lx0 = l.cx - box.w / 2 / sl;
+      const lx1 = l.cx + box.w / 2 / sl;
+      const ly0 = l.cy - box.h / 2 / sl;
+      const ly1 = l.cy + box.h / 2 / sl;
+      const inside = lx0 >= c.cx - vwc * (0.5 + OVERSCAN) && lx1 <= c.cx + vwc * (0.5 + OVERSCAN) && ly0 >= c.cy - vhc * (0.5 + OVERSCAN) && ly1 <= c.cy + vhc * (0.5 + OVERSCAN);
+      if (!inside || sl / sc > 2.5) return commit();
+      window.clearTimeout(settleTimer.current);
+      if (settleMs >= 0) settleTimer.current = window.setTimeout(commit, settleMs);
+    },
+    [clamp, applyPreview, commit, fit, box.w, box.h],
+  );
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(frameReq.current);
+      window.clearTimeout(settleTimer.current);
+    },
+    [],
+  );
 
   const rasters = useMemo(() => buildRasters(grid, layers), [grid, layers]);
   const paths = useMemo(() => buildPaths(layers), [layers]);
@@ -174,16 +274,30 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
 
   // Detail cache: the whole area pre-rendered at every zoom level in background workers.
   const cache = useMemo(() => tileCacheFor(grid, layers), [grid, layers]);
+  // Tiles finish by the hundred while the cache fills; redraw at most four times a second for them.
   const [cacheTick, setCacheTick] = useState(0);
-  useEffect(() => cache.subscribe(() => setCacheTick((t) => t + 1)), [cache]);
+  useEffect(() => {
+    let timer = 0;
+    const unsub = cache.subscribe(() => {
+      if (timer) return;
+      timer = window.setTimeout(() => {
+        timer = 0;
+        setCacheTick((t) => t + 1);
+      }, 250);
+    });
+    return () => {
+      unsub();
+      window.clearTimeout(timer);
+    };
+  }, [cache]);
   const cachePct = Math.round((cache.done / cache.total) * 100);
 
   useEffect(() => {
     const cv = canvasRef.current;
     if (!cv || box.w <= 0) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const cw = Math.round(box.w * dpr);
-    const ch = Math.round(box.h * dpr);
+    const cw = Math.round(stageW * dpr);
+    const ch = Math.round(stageH * dpr);
     if (cv.width !== cw) cv.width = cw;
     if (cv.height !== ch) cv.height = ch;
     const ctx = cv.getContext('2d');
@@ -192,20 +306,20 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
       // Cached tiles carry relief, hatching, contours, channels and grain; only coverage goes on top.
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, cw, ch);
-      cache.draw(ctx, x0, yTop, s * dpr, vw, vh);
+      cache.draw(ctx, dx0, dyTop, s * dpr, dvw, dvh);
       if (covCanvas) {
-        ctx.setTransform(s * dpr, 0, 0, s * dpr, -x0 * s * dpr, -(H - yTop) * s * dpr);
+        ctx.setTransform(s * dpr, 0, 0, s * dpr, -dx0 * s * dpr, -(H - dyTop) * s * dpr);
         ctx.drawImage(covCanvas, 0, 0, W, H);
       }
     } else {
-      drawSurvey(ctx, grid, rasters, paths, { view: { x0, yTop, S: s * dpr }, dpr, terrain: true, grain: true, coverage: covCanvas });
+      drawSurvey(ctx, grid, rasters, paths, { view: { x0: dx0, yTop: dyTop, S: s * dpr }, dpr, terrain: true, grain: true, coverage: covCanvas });
     }
     if (showSafety && safeCanvas) {
-      ctx.setTransform(s * dpr, 0, 0, s * dpr, -x0 * s * dpr, -(H - yTop) * s * dpr);
+      ctx.setTransform(s * dpr, 0, 0, s * dpr, -dx0 * s * dpr, -(H - dyTop) * s * dpr);
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(safeCanvas, 0, 0, W, H);
     }
-  }, [grid, rasters, paths, covCanvas, safeCanvas, showSafety, box.w, box.h, x0, yTop, s, vw, vh, cache, cacheTick, W, H]);
+  }, [grid, rasters, paths, covCanvas, safeCanvas, showSafety, box.w, stageW, stageH, dx0, dyTop, s, dvw, dvh, cache, cacheTick, W, H]);
 
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
   const sel = selectedId ? byId.get(selectedId) : undefined;
@@ -218,11 +332,11 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
     if (!lens || !src || !sel || !selVisible || !src.width) return;
     const ctx = lens.getContext('2d');
     if (!ctx) return;
-    const dpr = src.width / Math.max(1, box.w);
+    const dpr = src.width / Math.max(1, stageW);
     const size = lens.width;
     const span = 48 * dpr;
-    const cx = (sel.x - x0) * s * dpr;
-    const cy = (yTop - sel.y) * s * dpr;
+    const cx = (sel.x - dx0) * s * dpr;
+    const cy = (dyTop - sel.y) * s * dpr;
     ctx.clearRect(0, 0, size, size);
     ctx.save();
     ctx.beginPath();
@@ -240,47 +354,70 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
     ctx.restore();
   });
 
-  // Zoom about a point given in frame pixels (defaults to the frame centre).
-  const zoomBy = useCallback(
-    (factor: number, mx = box.w / 2, my = box.h / 2) => {
-      setView((p) => {
-        const s0 = fit * p.zoom;
-        const px = p.cx - box.w / 2 / s0 + mx / s0;
-        const py = p.cy + box.h / 2 / s0 - my / s0;
-        const zoom = Math.min(maxZoom, Math.max(1, p.zoom * factor));
-        const s1 = fit * zoom;
-        return { zoom, cx: px - (mx - box.w / 2) / s1, cy: py + (my - box.h / 2) / s1 };
-      });
+  // Zoom about a point given in frame pixels (defaults to the frame centre), starting from the live view.
+  const zoomed = useCallback(
+    (p: View, factor: number, mx = box.w / 2, my = box.h / 2): View => {
+      const s0 = fit * p.zoom;
+      const px = p.cx - box.w / 2 / s0 + mx / s0;
+      const py = p.cy + box.h / 2 / s0 - my / s0;
+      const zoom = Math.min(maxZoom, Math.max(1, p.zoom * factor));
+      const s1 = fit * zoom;
+      return { zoom, cx: px - (mx - box.w / 2) / s1, cy: py + (my - box.h / 2) / s1 };
     },
-    [box.w, box.h, fit, maxZoom, setView],
+    [box.w, box.h, fit, maxZoom],
   );
+  /** Buttons and keys: commit at once. */
+  const zoomBy = useCallback((factor: number) => setView((p) => zoomed(p, factor)), [setView, zoomed]);
+  const live = () => liveRef.current ?? committedRef.current;
 
-  // Wheel zoom needs a non-passive listener so the page does not scroll.
+  // Wheel zoom needs a non-passive listener so the page does not scroll. Wheel events preview; the commit follows when they stop.
   useEffect(() => {
-    const el = svgRef.current;
+    const el = rootRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
+      if (!(e.target instanceof Element) || !e.target.closest('.survey-stage')) return;
       e.preventDefault();
       const r = el.getBoundingClientRect();
-      zoomBy(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018)), e.clientX - r.left, e.clientY - r.top);
+      const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      preview(zoomed(liveRef.current ?? committedRef.current, Math.exp(-dy * (e.ctrlKey ? 0.01 : 0.0018)), e.clientX - r.left, e.clientY - r.top));
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [zoomBy]);
+  }, [preview, zoomed]);
 
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const drag = useRef<{ x: number; y: number; cx: number; cy: number; moved: boolean } | null>(null);
   const pinch = useRef<{ d: number; zoom: number } | null>(null);
   const suppressClick = useRef(false);
-  const [dragging, setDragging] = useState(false);
+  const hoverReq = useRef(0);
+  const defaultReadout = `Contours ${layers.contourIntervalM} m`;
+
+  // Elevation readout under the pointer: written straight to the DOM, once per frame, never through React.
+  const showHover = (clientX: number, clientY: number) => {
+    if (hoverReq.current) cancelAnimationFrame(hoverReq.current);
+    hoverReq.current = requestAnimationFrame(() => {
+      hoverReq.current = 0;
+      const out = readoutRef.current;
+      if (!out) return;
+      const p = toGrid(clientX, clientY);
+      if (!p) {
+        out.textContent = defaultReadout;
+        return;
+      }
+      const c = Math.round((p.x / W) * (grid.cols - 1));
+      const r = Math.round((p.y / H) * (grid.rows - 1));
+      out.textContent = `${Math.round(sampleElevation(grid, p.x, p.y)).toLocaleString('en-US')} m · ${layers.slopeDeg[r * grid.cols + c].toFixed(1)}°`;
+    });
+  };
 
   const onPointerDown = (e: PointerEvent<SVGSVGElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const l = live();
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointers.current.size === 1) drag.current = { x: e.clientX, y: e.clientY, cx: v.cx, cy: v.cy, moved: false };
+    if (pointers.current.size === 1) drag.current = { x: e.clientX, y: e.clientY, cx: l.cx, cy: l.cy, moved: false };
     if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()];
-      pinch.current = { d: Math.hypot(a.x - b.x, a.y - b.y), zoom: v.zoom };
+      pinch.current = { d: Math.hypot(a.x - b.x, a.y - b.y), zoom: l.zoom };
       if (drag.current) drag.current.moved = true;
     }
   };
@@ -289,10 +426,11 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
     if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pinch.current && pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()];
-      const r = svg.getBoundingClientRect();
+      const r = rootRef.current!.getBoundingClientRect();
       const d = Math.hypot(a.x - b.x, a.y - b.y);
+      const l = live();
       const target = (pinch.current.zoom * d) / Math.max(1, pinch.current.d);
-      zoomBy(target / v.zoom, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top);
+      preview(zoomed(l, target / l.zoom, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top), -1);
       return;
     }
     const dg = drag.current;
@@ -301,27 +439,32 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
       const dy = e.clientY - dg.y;
       if (!dg.moved && Math.hypot(dx, dy) > 4) {
         dg.moved = true;
-        setDragging(true);
+        svg.classList.add('dragging');
         svg.setPointerCapture(e.pointerId);
       }
       if (dg.moved) {
-        setView({ cx: dg.cx - dx / s, cy: dg.cy + dy / s, zoom: v.zoom });
+        const sl = fit * live().zoom;
+        // -1: no settle timer while the finger is down; pointer-up commits.
+        preview({ cx: dg.cx - dx / sl, cy: dg.cy + dy / sl, zoom: live().zoom }, -1);
         return;
       }
     }
-    const p = toGrid(e.clientX, e.clientY);
-    if (!p) return setHover(null);
-    const c = Math.round((p.x / W) * (grid.cols - 1));
-    const r = Math.round((p.y / H) * (grid.rows - 1));
-    setHover({ elev: sampleElevation(grid, p.x, p.y), slope: layers.slopeDeg[r * grid.cols + c] });
+    if (e.pointerType === 'mouse') showHover(e.clientX, e.clientY);
   };
   const onPointerEnd = (e: PointerEvent<SVGSVGElement>) => {
     pointers.current.delete(e.pointerId);
     if (pointers.current.size < 2) pinch.current = null;
+    if (pointers.current.size === 1 && drag.current) {
+      // Pinch became a one-finger drag: restart the drag from the remaining finger.
+      const [p] = [...pointers.current.values()];
+      const l = live();
+      drag.current = { x: p.x, y: p.y, cx: l.cx, cy: l.cy, moved: true };
+    }
     if (pointers.current.size === 0) {
       suppressClick.current = !!drag.current?.moved;
       drag.current = null;
-      setDragging(false);
+      svgRef.current?.classList.remove('dragging');
+      commit();
     }
   };
 
@@ -360,6 +503,11 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
   const routeNodes = route.map((id) => byId.get(id)).filter((n): n is SiteNode => !!n);
   const walkSmooth = useMemo(() => (walk ? smooth(walk.points, 3) : null), [walk]);
   const corridor = walkSmooth ?? (routeNodes.length > 1 ? routeNodes : null);
+  // Path strings are in map metres, independent of zoom: build them once per data change, not on every render.
+  const walkD = useMemo(() => (walkSmooth ? path(walkSmooth) : ''), [walkSmooth]); // eslint-disable-line react-hooks/exhaustive-deps
+  const routeKey = route.join('|');
+  const routeD = useMemo(() => path(routeNodes), [routeKey, byId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const corridorD = walkSmooth ? walkD : routeD;
   const routePairs = new Set<string>();
   for (let i = 0; i + 1 < route.length; i++) {
     routePairs.add(`${route[i]}|${route[i + 1]}`);
@@ -379,11 +527,13 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
 
   return (
     <div ref={rootRef} className="survey">
+      {/* The stage holds everything drawn in map coordinates. Gestures move it with a transform only. */}
+      <div ref={stageRef} className="survey-stage" style={{ left: -OVERSCAN * box.w, top: -OVERSCAN * box.h, width: stageW, height: stageH, transformOrigin: `${OVERSCAN * box.w}px ${OVERSCAN * box.h}px` }}>
       <canvas ref={canvasRef} className="survey-raster" aria-hidden="true" />
       <svg
         ref={svgRef}
-        className={`survey-vector${placing ? ' placing' : ''}${dragging ? ' dragging' : ''}`}
-        viewBox={`${x0} ${H - yTop} ${vw || 1} ${vh || 1}`}
+        className={`survey-vector${placing ? ' placing' : ''}`}
+        viewBox={`${dx0} ${H - dyTop} ${dvw || 1} ${dvh || 1}`}
         preserveAspectRatio="none"
         role="application"
         tabIndex={0}
@@ -393,7 +543,11 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
         onPointerMove={onPointerMove}
         onPointerUp={onPointerEnd}
         onPointerCancel={onPointerEnd}
-        onPointerLeave={() => setHover(null)}
+        onPointerLeave={() => {
+          if (hoverReq.current) cancelAnimationFrame(hoverReq.current);
+          hoverReq.current = 0;
+          if (readoutRef.current) readoutRef.current.textContent = defaultReadout;
+        }}
         onKeyDown={onKeyDown}
         onClick={(e: MouseEvent<SVGSVGElement>) => {
           if (suppressClick.current) {
@@ -408,13 +562,10 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
           <pattern id="sv-zone-hatch" patternUnits="userSpaceOnUse" width={9 * k} height={9 * k} patternTransform="rotate(-40)">
             <line x1="0" y1="0" x2="0" y2={9 * k} stroke="#e46a5a" strokeOpacity="0.55" strokeWidth={1.2 * k} />
           </pattern>
-          <filter id="sv-glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation={4 * k} />
-          </filter>
           {corridor && (
             <mask id="sv-band-edge" maskUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
-              <path d={path(corridor)} fill="none" stroke="#fff" strokeWidth={band + 2.4 * k} strokeLinecap="round" strokeLinejoin="round" />
-              <path d={path(corridor)} fill="none" stroke="#000" strokeWidth={band} strokeLinecap="round" strokeLinejoin="round" />
+              <path d={corridorD} fill="none" stroke="#fff" strokeWidth={band + 2.4 * k} strokeLinecap="round" strokeLinejoin="round" />
+              <path d={corridorD} fill="none" stroke="#000" strokeWidth={band} strokeLinecap="round" strokeLinejoin="round" />
             </mask>
           )}
         </defs>
@@ -466,9 +617,11 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
 
         {corridor && (
           <g pointerEvents="none" aria-hidden="true">
-            <path d={path(corridor)} fill="none" stroke="#f2c0a2" strokeOpacity={0.12} strokeWidth={band + 18 * k} strokeLinecap="round" strokeLinejoin="round" filter="url(#sv-glow)" />
-            <path d={path(corridor)} fill="none" stroke={PALETTE.salmon} strokeOpacity={0.17} strokeWidth={band} strokeLinecap="round" strokeLinejoin="round" />
-            <path d={path(corridor)} fill="none" stroke="#f2c0a2" strokeOpacity={0.6} strokeWidth={band + 2.4 * k} strokeLinecap="round" strokeLinejoin="round" mask="url(#sv-band-edge)" />
+            {/* Soft halo as two faint wide strokes: a blur filter here re-rasterised the whole layer on every repaint. */}
+            <path d={corridorD} fill="none" stroke="#f2c0a2" strokeOpacity={0.05} strokeWidth={band + 22 * k} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={corridorD} fill="none" stroke="#f2c0a2" strokeOpacity={0.06} strokeWidth={band + 10 * k} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={corridorD} fill="none" stroke={PALETTE.salmon} strokeOpacity={0.17} strokeWidth={band} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={corridorD} fill="none" stroke="#f2c0a2" strokeOpacity={0.6} strokeWidth={band + 2.4 * k} strokeLinecap="round" strokeLinejoin="round" mask="url(#sv-band-edge)" />
           </g>
         )}
 
@@ -501,8 +654,9 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
         )}
         {walkSmooth && (
           <g pointerEvents="none" aria-hidden="true" key={`walk-${sim ? walkSeq : 0}`} className={sim && sim.phase !== 'failing' ? 'sv-draw' : undefined}>
-            <path d={path(walkSmooth)} pathLength={1} fill="none" stroke={PALETTE.traverse} strokeOpacity={0.45} strokeWidth={9 * k} strokeLinecap="round" strokeLinejoin="round" filter="url(#sv-glow)" />
-            <path d={path(walkSmooth)} pathLength={1} fill="none" stroke={PALETTE.traverse} strokeWidth={2.3 * k} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={walkD} pathLength={1} fill="none" stroke={PALETTE.traverse} strokeOpacity={0.12} strokeWidth={11 * k} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={walkD} pathLength={1} fill="none" stroke={PALETTE.traverse} strokeOpacity={0.22} strokeWidth={6 * k} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={walkD} pathLength={1} fill="none" stroke={PALETTE.traverse} strokeWidth={2.3 * k} strokeLinecap="round" strokeLinejoin="round" />
           </g>
         )}
         {walk && (
@@ -563,15 +717,6 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
             );
           })}
         </g>
-        {routeNodes.length > 1 && motion && (
-          <g pointerEvents="none" aria-hidden="true" key={`signal-${route.join('|')}`}>
-            {[0, 1, 2].map((i) => (
-              <circle key={i} r={3.2 * k} fill={PALETTE.traverse} className="sv-signal">
-                <animateMotion dur={`${Math.max(2.4, routeNodes.length * 0.35)}s`} begin={`${(i * Math.max(2.4, routeNodes.length * 0.35)) / 3}s`} repeatCount="indefinite" path={path(routeNodes)} />
-              </circle>
-            ))}
-          </g>
-        )}
 
         <g pointerEvents="none" aria-hidden="true">
           {stations.map((st) => {
@@ -689,6 +834,18 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
           <path d={`M0,${-12 * k}L${4 * k},${4 * k}L0,${k}L${-4 * k},${4 * k}Z`} fill={PALETTE.bone} fillOpacity={0.7} />
         </g>
       </svg>
+      {/* Signal pulses get their own SVG (and compositor layer): animating them inside the main
+          overlay repainted every route, mask and label on each frame. */}
+      {routeNodes.length > 1 && motion && (
+        <svg className="survey-pulses" viewBox={`${dx0} ${H - dyTop} ${dvw || 1} ${dvh || 1}`} preserveAspectRatio="none" aria-hidden="true" key={`signal-${route.join('|')}`}>
+          {[0, 1, 2].map((i) => (
+            <circle key={i} r={3.2 * k} fill={PALETTE.traverse} className="sv-signal">
+              <animateMotion dur={`${Math.max(2.4, routeNodes.length * 0.35)}s`} begin={`${(i * Math.max(2.4, routeNodes.length * 0.35)) / 3}s`} repeatCount="indefinite" path={routeD} />
+            </circle>
+          ))}
+        </svg>
+      )}
+      </div>
 
       {sel && selVisible && (
         <div className="survey-lens" aria-hidden="true">
@@ -701,8 +858,8 @@ export function SurveyMap({ grid, layers, nodes, labels, links, route, criticalI
         <span className={`cache-state${cachePct < 100 ? ' busy' : ''}`} title="The whole map is pre-rendered at every zoom level and kept in memory, so zooming never waits.">
           {cachePct < 100 ? `Caching detail ${cachePct}%` : `Detail cached · ${Math.round(cache.bytes / 1048576)} MB`}
         </span>
-        <span className="survey-readout num" aria-live="off">
-          {hover ? `${Math.round(hover.elev).toLocaleString('en-US')} m · ${hover.slope.toFixed(1)}°` : `Contours ${layers.contourIntervalM} m`}
+        <span ref={readoutRef} className="survey-readout num" aria-live="off">
+          {defaultReadout}
         </span>
         <span className="survey-scale" aria-label={`Scale bar ${fmtLen(scaleL)}`}>
           <i style={{ width: scaleL * s }} />

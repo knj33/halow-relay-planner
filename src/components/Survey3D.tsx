@@ -1,6 +1,6 @@
 import { Canvas, useThree } from '@react-three/fiber';
 import { Line, OrbitControls } from '@react-three/drei';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import * as THREE from 'three';
 import { heightFor, sampleBicubic } from '../engine';
@@ -177,7 +177,8 @@ function OrbitStep({ signal, controls }: { signal: { n: number; az: number; el: 
   return null;
 }
 
-export function Survey3D({ grid, layers, radiusM, nodes, labels, links, route, walk, heights, selectedId, onNodeClick }: Props) {
+/** Memoised, and renders on demand: frames happen only while the camera moves or the scene changes. */
+export const Survey3D = memo(function Survey3D({ active = true, grid, layers, radiusM, nodes, labels, links, route, walk, heights, selectedId, onNodeClick }: Props & { active?: boolean }) {
   const [exag, setExag] = useState(3);
   const [resetKey, setResetKey] = useState(0);
   const [step, setStep] = useState({ n: 0, az: 0, el: 0 });
@@ -222,7 +223,7 @@ export function Survey3D({ grid, layers, radiusM, nodes, labels, links, route, w
 
   return (
     <div className="survey3d">
-      <Canvas key={resetKey} camera={{ position: [0, span * 0.55, span * 0.95], fov: 40, near: span * 0.001, far: span * 20 }} dpr={[1, 2]} aria-label="3D relief of the planning area. Drag to rotate, right-drag to pan, scroll to zoom." role="img">
+      <Canvas key={resetKey} camera={{ position: [0, span * 0.55, span * 0.95], fov: 40, near: span * 0.001, far: span * 20 }} dpr={[1, 2]} frameloop={active ? 'demand' : 'never'} aria-label="3D relief of the planning area. Drag to rotate, right-drag to pan, scroll to zoom." role="img">
         <color attach="background" args={[PALETTE.ground]} />
         <fog attach="fog" args={[PALETTE.ground, span * 1.6, span * 4]} />
         <Terrain grid={grid} frame={frame} texture={texture} />
@@ -324,4 +325,4 @@ export function Survey3D({ grid, layers, radiusM, nodes, labels, links, route, w
       </div>
     </div>
   );
-}
+});

@@ -497,7 +497,12 @@ export const useStore = create<State>((set, get) => ({
   setGlobeRelief: (globeRelief) => set({ globeRelief }),
   setNotice: (notice) => set({ notice }),
   flyTo: (lat, lon, heightM) => set({ fly: { lat, lon, heightM, seq: ++flySeq } }),
-  setViewCentre: (viewCentre) => set({ viewCentre }),
+  // The globe reports its centre twice a second; skip sub-metre-scale jitter so subscribers do not re-render while idle.
+  setViewCentre: (viewCentre) => {
+    const p = get().viewCentre;
+    if (p && viewCentre && Math.abs(p.lat - viewCentre.lat) < 1e-4 && Math.abs(p.lon - viewCentre.lon) < 1e-4) return;
+    if (p !== viewCentre) set({ viewCentre });
+  },
 
   probeEngine: async () => {
     if (!get().engineEnabled) {

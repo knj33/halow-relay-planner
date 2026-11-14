@@ -17,6 +17,10 @@ npm run build      # type-check + production build in dist/
 npm run preview    # serve the production build
 ```
 
+## Presenting
+
+The site can play slide decks, PowerPoint style, including **live slides** where the planner itself is on screen and the deck drives it. Open `http://localhost:5173/#/present`, click **Present** in the masthead, or press `P`; `?` lists the controls. Only a sample deck exists so far. How to write a deck and how the engine works: [docs/PRESENTATION.md](docs/PRESENTATION.md). How the app stays smooth on slow CPUs: [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
+
 No backend, accounts or API keys. Imagery, elevation and the lunar and Martian DEMs stream public data over the internet; the bundled base maps and synthetic terrain work offline.
 
 ## Data sources by body
