@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #111620;
+        --panel: #171d29;
+        --line: #364155;
+        --text: #e6eaf2;
+        --muted: #98a3b6;
+        --accent: #58b4e8;
+        --ok: #3ddc97;
+        --bad: #ff6b7a;
+      }
+      body {
+        width: 290px;
+        margin: 0;
+        padding: 14px;
+        background: var(--bg);
+        color: var(--text);
+        font: 13px/1.45 'Inter', 'Segoe UI', system-ui, sans-serif;
+      }
+      h1 { font-size: 14px; margin: 0 0 2px; }
+      p { margin: 0; }
+      .muted { color: var(--muted); font-size: 12px; }
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 12px 0;
+        padding: 9px 10px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+      .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+      .dot.ok { background: var(--ok); }
+      .dot.bad { background: var(--bad); }
+      .row { display: flex; gap: 8px; }
+      button, a.button {
+        flex: 1;
+        font: inherit;
+        color: inherit;
+        text-align: center;
+        text-decoration: none;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 7px 9px;
+        cursor: pointer;
+      }
+      button:hover, a.button:hover { border-color: var(--accent); }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #06202e; font-weight: 650; }
+      .stack { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+      #detail { margin-top: 8px; min-height: 16px; }
+    </style>
+  </head>
+  <body>
+    <h1>Relay Engine</h1>
+    <p class="muted">Optional native terrain helper</p>
+
+    <div class="status">
+      <span id="dot" class="dot"></span>
+      <span id="label">Not checked</span>
+    </div>
+    <div id="detail" class="muted"></div>
+
+    <div class="stack">
+      <button id="detect" class="primary" type="button">Detect engine</button>
+      <button id="mark" type="button">Mark this tab as engine-aware</button>
+      <a id="guide" class="button" href="#" target="_blank" rel="noreferrer">Open install guide</a>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,11 @@
+node_modules
+dist
+native/relay-engine
+native/test-engine
+public/engine/relay-engine.c
+public/engine/Makefile
+public/engine/*.tar.gz
+*.o
+
+# Reference image of unknown copyright; see HANDOFF.md
+design idea/

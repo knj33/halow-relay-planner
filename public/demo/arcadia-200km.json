@@ -1,0 +1,884 @@
+{
+ "schema": "halow-relay-planner/premade-demo",
+ "version": 1,
+ "builtAt": "2026-11-14T16:50:14.928Z",
+ "site": {
+  "name": "Arcadia Planitia, SpaceX Starship candidate landing site",
+  "lat": 39.09,
+  "lon": -170.21,
+  "source": "https://hirise.lpl.arizona.edu/ESP_060706_2195"
+ },
+ "body": "mars",
+ "area": {
+  "centre": {
+   "lat": 39.09,
+   "lon": -170.21
+  },
+  "sizeM": 200000
+ },
+ "grid": {
+  "file": "arcadia-200km.bin",
+  "cols": 1025,
+  "rows": 1025,
+  "widthM": 200000,
+  "heightM": 200000,
+  "minElevM": -4120.90283203125,
+  "maxElevM": -2784.822021484375,
+  "offsetM": -4121,
+  "scaleM": 0.25,
+  "format": "int16le"
+ },
+ "terrainMeta": {
+  "id": "demo-mars-hrsc-mola-200m",
+  "label": "Premade demo · 200 km area at 39.090°N, 189.790°E",
+  "body": "mars",
+  "synthetic": false,
+  "georeferenced": true,
+  "site": {
+   "lat": 39.09,
+   "lon": -170.21
+  },
+  "resolutionM": 200,
+  "attribution": "Mars HRSC + MOLA blended global DEM v2, USGS Astrogeology (ESA/DLR/FU Berlin Mars Express HRSC, NASA GSFC MGS MOLA) (200 m north-south, 155 m east-west here), resampled to a 1025 × 1025 grid at 195 m spacing and bundled with the app (fetched 2026-11-14). Outside HRSC stereo coverage the blend is MOLA, effectively ~460 m."
+ },
+ "radio": {
+  "name": "Demo HaLow profile, 3 m masts (illustrative)",
+  "frequencyMHz": 915,
+  "txPowerDbm": 21,
+  "txAntennaGainDbi": 3,
+  "rxAntennaGainDbi": 3,
+  "antennaHeightM": 3,
+  "rxSensitivityDbm": -98,
+  "txCableLossDb": 1,
+  "rxCableLossDb": 1,
+  "requiredMarginDb": 10
+ },
+ "planner": {
+  "gridDivisions": 32,
+  "requireFresnel": false,
+  "redundancy": true
+ },
+ "roles": {
+  "A": "Starship landing zone",
+  "B": "Ice-mining outpost",
+  "base-1": "Landing-zone uplink",
+  "base-2": "Mid-route uplink",
+  "base-3": "Outpost uplink"
+ },
+ "nodes": [
+  {
+   "id": "A",
+   "kind": "A",
+   "lat": 38.407803684279486,
+   "lon": -171.39645767646965,
+   "enabled": true,
+   "origin": "manual"
+  },
+  {
+   "id": "B",
+   "kind": "B",
+   "lat": 39.84326343386443,
+   "lon": -168.88902927722398,
+   "enabled": true,
+   "origin": "manual"
+  },
+  {
+   "id": "base-1",
+   "kind": "base",
+   "lat": 38.35773867042482,
+   "lon": -171.3309582420984,
+   "enabled": true,
+   "origin": "manual"
+  },
+  {
+   "id": "base-2",
+   "kind": "base",
+   "lat": 39.15761561234764,
+   "lon": -170.21000000000004,
+   "enabled": true,
+   "origin": "manual"
+  },
+  {
+   "id": "base-3",
+   "kind": "base",
+   "lat": 39.894690442614625,
+   "lon": -168.9541460824393,
+   "enabled": true,
+   "origin": "manual"
+  },
+  {
+   "id": "relay-1",
+   "kind": "relay",
+   "lat": 38.556745454028366,
+   "lon": -171.29083392057362,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-2",
+   "kind": "relay",
+   "lat": 38.591067607518205,
+   "lon": -171.13928155062013,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-3",
+   "kind": "relay",
+   "lat": 38.66503019467911,
+   "lon": -170.9541905005505,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-4",
+   "kind": "relay",
+   "lat": 38.77152584555138,
+   "lon": -170.8070871662385,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-5",
+   "kind": "relay",
+   "lat": 38.78835980927785,
+   "lon": -170.7394570353763,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-6",
+   "kind": "relay",
+   "lat": 38.97327975643734,
+   "lon": -170.73234531454176,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-7",
+   "kind": "relay",
+   "lat": 39.088021774297815,
+   "lon": -170.8905806754742,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-8",
+   "kind": "relay",
+   "lat": 39.2329747313951,
+   "lon": -170.94313361179417,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-9",
+   "kind": "relay",
+   "lat": 39.367854288180126,
+   "lon": -171.01714780183545,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-10",
+   "kind": "relay",
+   "lat": 39.444573325534776,
+   "lon": -170.89404762095478,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-11",
+   "kind": "relay",
+   "lat": 39.56342379668773,
+   "lon": -170.89521508982557,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-12",
+   "kind": "relay",
+   "lat": 39.67977296335449,
+   "lon": -170.74192988245795,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-13",
+   "kind": "relay",
+   "lat": 39.75592848846465,
+   "lon": -170.69098076412774,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-14",
+   "kind": "relay",
+   "lat": 39.82909227129797,
+   "lon": -170.53672459909177,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-15",
+   "kind": "relay",
+   "lat": 39.7964499844257,
+   "lon": -170.34750302044938,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-16",
+   "kind": "relay",
+   "lat": 39.97806985174265,
+   "lon": -170.31339929724413,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-17",
+   "kind": "relay",
+   "lat": 40.13328389611403,
+   "lon": -170.24022642897086,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-18",
+   "kind": "relay",
+   "lat": 40.07704754589007,
+   "lon": -170.04604822053312,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-19",
+   "kind": "relay",
+   "lat": 39.99744506834101,
+   "lon": -169.87385684386987,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-20",
+   "kind": "relay",
+   "lat": 40.05298911776971,
+   "lon": -169.70968884039416,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-21",
+   "kind": "relay",
+   "lat": 40.14447020689908,
+   "lon": -169.51899046721792,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-22",
+   "kind": "relay",
+   "lat": 40.07694868732156,
+   "lon": -169.29962243416145,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-23",
+   "kind": "relay",
+   "lat": 40.035264156938254,
+   "lon": -169.06300585702297,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-24",
+   "kind": "relay",
+   "lat": 38.53111243283282,
+   "lon": -171.5352515701844,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-25",
+   "kind": "relay",
+   "lat": 38.469763943272824,
+   "lon": -171.6943752384807,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-26",
+   "kind": "relay",
+   "lat": 38.61667742170471,
+   "lon": -171.81997876480932,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-27",
+   "kind": "relay",
+   "lat": 38.75977051445448,
+   "lon": -171.971424924364,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-28",
+   "kind": "relay",
+   "lat": 38.89741751593883,
+   "lon": -171.81361225603598,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-29",
+   "kind": "relay",
+   "lat": 38.96809088322191,
+   "lon": -171.95112009172715,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-30",
+   "kind": "relay",
+   "lat": 39.074214848020304,
+   "lon": -172.13238954460127,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-31",
+   "kind": "relay",
+   "lat": 39.18010732147054,
+   "lon": -172.11824146331224,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-32",
+   "kind": "relay",
+   "lat": 39.36099861820874,
+   "lon": -172.1616087592517,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-33",
+   "kind": "relay",
+   "lat": 39.496949591215014,
+   "lon": -172.12689700453507,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-34",
+   "kind": "relay",
+   "lat": 39.49910486879741,
+   "lon": -171.99001248264614,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-35",
+   "kind": "relay",
+   "lat": 39.541819711357626,
+   "lon": -171.77272463403904,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-36",
+   "kind": "relay",
+   "lat": 39.540157397929775,
+   "lon": -171.64423600999777,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-37",
+   "kind": "relay",
+   "lat": 39.5160334237862,
+   "lon": -171.4425743208908,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-38",
+   "kind": "relay",
+   "lat": 39.451002208653634,
+   "lon": -171.34307701930402,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-39",
+   "kind": "relay",
+   "lat": 39.403044557963455,
+   "lon": -171.1671062466197,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-40",
+   "kind": "relay",
+   "lat": 39.50938426812623,
+   "lon": -171.07869727436548,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-41",
+   "kind": "relay",
+   "lat": 39.615365917883196,
+   "lon": -171.03287610641996,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-42",
+   "kind": "relay",
+   "lat": 39.70192950106367,
+   "lon": -170.9223305713054,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-43",
+   "kind": "relay",
+   "lat": 39.84107790427056,
+   "lon": -170.83776782166217,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-44",
+   "kind": "relay",
+   "lat": 39.934277293435535,
+   "lon": -170.67500273603105,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-45",
+   "kind": "relay",
+   "lat": 39.82909227129797,
+   "lon": -170.53672459909177,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-46",
+   "kind": "relay",
+   "lat": 39.82950422670434,
+   "lon": -170.30887757455594,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-47",
+   "kind": "relay",
+   "lat": 39.93516367733222,
+   "lon": -170.12388764308514,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-48",
+   "kind": "relay",
+   "lat": 39.875686892474114,
+   "lon": -170.0723390765799,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-49",
+   "kind": "relay",
+   "lat": 39.723764686274336,
+   "lon": -170.03400918975706,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-50",
+   "kind": "relay",
+   "lat": 39.723174444038506,
+   "lon": -169.79792629757628,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-51",
+   "kind": "relay",
+   "lat": 39.8282594212451,
+   "lon": -169.65973141547403,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-52",
+   "kind": "relay",
+   "lat": 39.93318066869214,
+   "lon": -169.52111437307622,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-53",
+   "kind": "relay",
+   "lat": 39.82796265137234,
+   "lon": -169.59954753802333,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-54",
+   "kind": "relay",
+   "lat": 39.82668161657406,
+   "lon": -169.38890860359072,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-55",
+   "kind": "relay",
+   "lat": 39.8190390223361,
+   "lon": -169.2514448227422,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-56",
+   "kind": "relay",
+   "lat": 39.82097816226068,
+   "lon": -169.09666191171954,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-57",
+   "kind": "relay",
+   "lat": 38.408113389084285,
+   "lon": -171.29702422747562,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-58",
+   "kind": "relay",
+   "lat": 39.02389010929954,
+   "lon": -170.34599131832147,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-59",
+   "kind": "relay",
+   "lat": 38.86879650378582,
+   "lon": -170.2057595699008,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-60",
+   "kind": "relay",
+   "lat": 38.82910889462757,
+   "lon": -170.3371418679285,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-61",
+   "kind": "relay",
+   "lat": 38.77281962923209,
+   "lon": -170.44290916416304,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-62",
+   "kind": "relay",
+   "lat": 38.82186684357873,
+   "lon": -170.61681373478166,
+   "enabled": true,
+   "origin": "auto"
+  },
+  {
+   "id": "relay-63",
+   "kind": "relay",
+   "lat": 38.96092414658726,
+   "lon": -170.48174089925374,
+   "enabled": true,
+   "origin": "auto"
+  }
+ ],
+ "plan": {
+  "status": "ok",
+  "relays": [
+   {
+    "x": 50000,
+    "y": 68750
+   },
+   {
+    "x": 57031.25,
+    "y": 70703.125
+   },
+   {
+    "x": 65625,
+    "y": 75000
+   },
+   {
+    "x": 72460.9375,
+    "y": 81250
+   },
+   {
+    "x": 75585.9375,
+    "y": 82226.5625
+   },
+   {
+    "x": 75976.5625,
+    "y": 93164.0625
+   },
+   {
+    "x": 68750,
+    "y": 100000
+   },
+   {
+    "x": 66406.25,
+    "y": 108593.75
+   },
+   {
+    "x": 63085.9375,
+    "y": 116601.5625
+   },
+   {
+    "x": 68750,
+    "y": 121093.75
+   },
+   {
+    "x": 68750,
+    "y": 128125
+   },
+   {
+    "x": 75781.25,
+    "y": 134960.9375
+   },
+   {
+    "x": 78125,
+    "y": 139453.125
+   },
+   {
+    "x": 85156.25,
+    "y": 143750
+   },
+   {
+    "x": 93750,
+    "y": 141796.875
+   },
+   {
+    "x": 95312.5,
+    "y": 152539.0625
+   },
+   {
+    "x": 98632.8125,
+    "y": 161718.75
+   },
+   {
+    "x": 107421.875,
+    "y": 158398.4375
+   },
+   {
+    "x": 115234.375,
+    "y": 153710.9375
+   },
+   {
+    "x": 122656.25,
+    "y": 157031.25
+   },
+   {
+    "x": 131250,
+    "y": 162500
+   },
+   {
+    "x": 141210.9375,
+    "y": 158593.75
+   },
+   {
+    "x": 151953.125,
+    "y": 156250
+   },
+   {
+    "x": 38671.875,
+    "y": 67382.8125
+   },
+   {
+    "x": 31250,
+    "y": 63867.1875
+   },
+   {
+    "x": 25585.9375,
+    "y": 72656.25
+   },
+   {
+    "x": 18750,
+    "y": 81250
+   },
+   {
+    "x": 26171.875,
+    "y": 89257.8125
+   },
+   {
+    "x": 19921.875,
+    "y": 93554.6875
+   },
+   {
+    "x": 11718.75,
+    "y": 100000
+   },
+   {
+    "x": 12500,
+    "y": 106250
+   },
+   {
+    "x": 10742.1875,
+    "y": 116992.1875
+   },
+   {
+    "x": 12500,
+    "y": 125000
+   },
+   {
+    "x": 18750,
+    "y": 125000
+   },
+   {
+    "x": 28710.9375,
+    "y": 127343.75
+   },
+   {
+    "x": 34570.3125,
+    "y": 127148.4375
+   },
+   {
+    "x": 43750,
+    "y": 125585.9375
+   },
+   {
+    "x": 48242.1875,
+    "y": 121679.6875
+   },
+   {
+    "x": 56250,
+    "y": 118750
+   },
+   {
+    "x": 60351.5625,
+    "y": 125000
+   },
+   {
+    "x": 62500,
+    "y": 131250
+   },
+   {
+    "x": 67578.125,
+    "y": 136328.125
+   },
+   {
+    "x": 71484.375,
+    "y": 144531.25
+   },
+   {
+    "x": 78906.25,
+    "y": 150000
+   },
+   {
+    "x": 85156.25,
+    "y": 143750
+   },
+   {
+    "x": 95507.8125,
+    "y": 143750
+   },
+   {
+    "x": 103906.25,
+    "y": 150000
+   },
+   {
+    "x": 106250,
+    "y": 146484.375
+   },
+   {
+    "x": 108007.8125,
+    "y": 137500
+   },
+   {
+    "x": 118750,
+    "y": 137500
+   },
+   {
+    "x": 125000,
+    "y": 143750
+   },
+   {
+    "x": 131250,
+    "y": 150000
+   },
+   {
+    "x": 127734.375,
+    "y": 143750
+   },
+   {
+    "x": 137304.6875,
+    "y": 143750
+   },
+   {
+    "x": 143554.6875,
+    "y": 143359.375
+   },
+   {
+    "x": 150585.9375,
+    "y": 143554.6875
+   },
+   {
+    "x": 49609.375,
+    "y": 59960.9375
+   },
+   {
+    "x": 93750,
+    "y": 96093.75
+   },
+   {
+    "x": 100195.3125,
+    "y": 86914.0625
+   },
+   {
+    "x": 94140.625,
+    "y": 84570.3125
+   },
+   {
+    "x": 89257.8125,
+    "y": 81250
+   },
+   {
+    "x": 81250,
+    "y": 84179.6875
+   },
+   {
+    "x": 87500,
+    "y": 92382.8125
+   }
+  ],
+  "unreachedBases": [],
+  "redundantPathFound": true,
+  "notes": [],
+  "candidatesSampled": 1024,
+  "linksEvaluated": 4716,
+  "feasibleLinks": 1896
+ },
+ "summary": {
+  "topology": "mesh",
+  "hops": 25,
+  "weakestMarginDb": 10.499766893635496,
+  "disjointPaths": 2,
+  "relays": 63
+ }
+}

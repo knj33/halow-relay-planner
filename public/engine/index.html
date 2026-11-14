@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Relay Engine — native terrain helper</title>
+    <style>
+      :root {
+        --bg: #0a0d13;
+        --panel: #111620;
+        --panel-2: #171d29;
+        --line: #252d3c;
+        --line-strong: #364155;
+        --text: #e6eaf2;
+        --muted: #98a3b6;
+        --accent: #58b4e8;
+        --accent-ink: #06202e;
+        --ok: #3ddc97;
+        color-scheme: dark;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.6 'Inter', 'Segoe UI', system-ui, sans-serif;
+      }
+      main { max-width: 780px; margin: 0 auto; padding: 48px 20px 80px; }
+      h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
+      h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 34px 0 10px; }
+      p { margin: 0 0 12px; }
+      a { color: var(--accent); }
+      .lede { color: var(--muted); margin-bottom: 24px; }
+      .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin: 16px 0; }
+      .card.ok { border-color: #1d4535; }
+      code, pre { font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; }
+      code { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; font-size: 13px; }
+      pre { background: #06090e; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font-size: 13px; line-height: 1.55; }
+      pre code { background: none; border: none; padding: 0; }
+      ol, ul { padding-left: 22px; }
+      li { margin: 6px 0; }
+      .pill { display: inline-block; font-size: 11px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-ink); background: var(--accent); border-radius: 999px; padding: 2px 9px; vertical-align: 2px; }
+      .muted { color: var(--muted); font-size: 13px; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+      .back { display: inline-block; margin-bottom: 22px; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back" href="../">← Back to the planner</a>
+      <h1>Relay Engine <span class="pill">optional</span></h1>
+      <p class="lede">
+        A small native helper that downloads and resamples terrain in parallel on your own machine. The planner detects it automatically and falls back to
+        the browser loader whenever it is not running.
+      </p>
+
+      <div class="card">
+        <strong>What it does.</strong>
+        <ul>
+          <li>Streams Earth terrain tiles (Terrarium / SRTM and friends) with a thread pool, then resamples to the planning grid in C.</li>
+          <li>Reads Moon LOLA 118 m and Mars HRSC + MOLA 200 m GeoTIFF rows with HTTP range requests in parallel instead of one row at a time.</li>
+          <li>Returns a compact binary <code>HRG1</code> grid over loopback. The browser still does the planning maths.</li>
+          <li>Binds to <code>127.0.0.1</code> only and rejects browser origins that are not on its allowlist.</li>
+        </ul>
+      </div>
+
+      <h2>1. Requirements</h2>
+      <ul>
+        <li>Linux on an <strong>x86-64-v3</strong> capable CPU. AVX2 alone does not guarantee the full instruction set. Use the portable build below on other x86-64 CPUs.</li>
+        <li>A C compiler, <code>make</code>, and the libcurl + libpng development headers.</li>
+      </ul>
+      <pre><code># Debian / Ubuntu
+sudo apt install build-essential libcurl4-openssl-dev libpng-dev
+
+# Fedora
+sudo dnf install gcc make libcurl-devel libpng-devel
+
+# Arch
+sudo pacman -S base-devel curl libpng</code></pre>
+
+      <h2>2. Build and run</h2>
+      <p>Download the two source files, or use the copy you already have in the project's <code>native/</code> folder.</p>
+      <p><a href="relay-engine-source.tar.gz" download>Download C source bundle</a> · <a href="relay-engine.c" download>C source</a> · <a href="Makefile" download>Makefile</a></p>
+      <pre><code id="install-command">Download the source bundle, extract it, then run make &amp;&amp; make install.</code></pre>
+      <p class="muted">Installs to <code>~/.local/bin/relay-engine</code> without root. Compilation targets x86-64-v3 by default; use <code>make portable</code> for baseline x86-64.</p>
+      <p>
+        It listens on <code>http://127.0.0.1:8765</code>. Options: <code>--port N</code>, <code>--threads N</code>, and
+        <code>--origin URL</code> (repeatable) to allow a hosted planner origin.
+      </p>
+      <pre><code>curl http://127.0.0.1:8765/health
+# {"ok":true,"name":"relay-engine","version":"0.1.0","arch":"x86_64","avx2":true,"threads":8,"pid":1234}</code></pre>
+
+      <div class="card ok">
+        <strong>Using a hosted planner?</strong>
+        <p class="muted" style="margin-top:6px">
+          Add the site's origin when you start the engine, for example:
+          <code id="host-command">./relay-engine --origin https://planner.example.com</code>. The development origins
+          <code>http://localhost:5173</code> and <code>http://127.0.0.1:4173</code> are allowed by default.
+        </p>
+      </div>
+
+      <h2>3. Start it automatically (Linux, systemd user service)</h2>
+      <pre><code id="service-command">mkdir -p ~/.config/systemd/user
+cat &gt; ~/.config/systemd/user/relay-engine.service &lt;&lt;'EOF'
+[Unit]
+Description=HaLow Relay Planner native terrain engine
+
+[Service]
+ExecStart=%h/.local/bin/relay-engine --origin https://planner.example.com
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+EOF
+systemctl --user daemon-reload
+systemctl --user enable --now relay-engine</code></pre>
+      <p class="muted">Check status with <code>systemctl --user status relay-engine</code>. Nothing is exposed beyond loopback.</p>
+
+      <h2>4. Browser extension (also optional)</h2>
+      <p>
+        The planner talks to the engine directly, so the extension is not required. A small Manifest V3 extension in the project's
+        <code>extensions/</code> folder can badge the engine status and mark the page as engine-aware.
+        <a href="relay-engine-extension.tar.gz" download>Download the extension</a> and extract it. In Chromium, open
+        <code>chrome://extensions</code> (Developer mode → Load unpacked) and select <code>extensions/chromium</code>. In Firefox, open
+        <code>about:debugging#/runtime/this-firefox</code> → Load Temporary Add-on and pick <code>extensions/firefox/manifest.json</code>.
+        The extension reports status; terrain requests go directly from the planner to the native engine.
+      </p>
+
+      <h2>Resources and larger areas</h2>
+      <p>The engine uses up to 32 download workers by default, based on the online CPU count. Set <code>--threads 4</code> to limit it.
+        Native mode enables Earth areas up to 300 km and Moon and Mars areas up to 120 km, with finer grid budgets than the browser.
+        Remote server speed still limits downloads. Larger grids do not increase physical radio range or resolve features smaller than the source elevation data.</p>
+      <h2>Troubleshooting</h2>
+      <p>For a hosted planner, your browser may ask for local or loopback network access. Allow that permission for this site, then press Detect again.
+        The website continues using its browser loader if access is blocked. The extension does not bypass browser permissions.</p>
+      <div class="grid">
+        <div class="card">
+          <strong>“Not detected”</strong>
+          <p class="muted">Confirm the engine is running: <code>curl http://127.0.0.1:8765/health</code>. Then press Detect in the planner's engine panel.</p>
+        </div>
+        <div class="card">
+          <strong>HTTP 403 origin not allowed</strong>
+          <p class="muted">Restart the engine with <code>--origin</code> set to the exact origin shown in your browser's address bar, including scheme and port.</p>
+        </div>
+        <div class="card">
+          <strong>Build fails on AVX2</strong>
+          <p class="muted">Use <code>make portable</code> to rebuild for baseline x86-64. Performance depends on the workload.</p>
+        </div>
+        <div class="card">
+          <strong>Moon or Mars loads slowly</strong>
+          <p class="muted">The USGS mosaics are remote and row-addressed. Mars needs version 0.3.0 or later; an older engine is skipped for Mars. The engine parallelises the range requests; the first load is still network-bound.</p>
+        </div>
+      </div>
+    </main>
+    <script>
+      const base = new URL('./', location.href);
+      const origin = location.origin;
+      // Shell single quotes keep URL characters literal in the displayed command.
+      const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
+      document.getElementById('install-command').textContent =
+        'mkdir -p ~/.local/share/relay-engine && cd ~/.local/share/relay-engine\n' +
+        'curl -fL ' + quote(new URL('relay-engine-source.tar.gz', base).href) + ' -o source.tar.gz\n' +
+        'tar -xzf source.tar.gz\nmake\nmake install\n' +
+        '~/.local/bin/relay-engine --origin ' + quote(origin);
+      document.getElementById('host-command').textContent = '~/.local/bin/relay-engine --origin ' + quote(origin);
+      const service = document.getElementById('service-command');
+      if (/^https?:$/.test(location.protocol)) service.textContent = service.textContent.replace('https://planner.example.com', origin);
+    </script>
+  </body>
+</html>

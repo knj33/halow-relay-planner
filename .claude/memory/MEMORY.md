@@ -1,0 +1,1 @@
+- [Mars survey design](mars-survey-design.md) — UI redesigned to the approved Mars survey style; keep new UI in it

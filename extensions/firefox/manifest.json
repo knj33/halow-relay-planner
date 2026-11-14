@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "HaLow Relay Engine Bridge",
+  "version": "0.1.0",
+  "description": "Detects the optional native Relay Engine and marks the HaLow Relay Planner page as engine-aware.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:8765/*"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "action": {
+    "default_title": "Relay Engine status",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "relay-engine-bridge@halow-planner.local",
+      "strict_min_version": "121.0"
+    }
+  }
+}
