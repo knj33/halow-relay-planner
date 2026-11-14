@@ -43,7 +43,7 @@ make -C native test       # deterministic regression tests, no network
 
 ## Domain model
 
-**Nodes** (`NodeKind`): `A` and `B` (the two endpoints, at most one each, ids `'A'`/`'B'`), `relay` (ids `relay-N`), `base` (base station with a satellite terminal, ids `base-N`). Each has `enabled` (disabled = treated as absent, used to simulate failure) and `origin: 'manual' | 'auto'`. Re-planning deletes every `auto` relay and keeps manual ones; moving an auto relay turns it manual.
+**Nodes** (`NodeKind`): `A` and `B` (the two endpoints, at most one each, ids `'A'`/`'B'`), `relay` (ids `relay-N`), `base` (base station with a satellite terminal, ids `base-N`). Each has `enabled` (disabled = treated as absent, used to simulate failure) and `origin: 'manual' | 'auto'`. "Plan relays" starts clean (user request): `clearForPlan` removes every relay, hand-placed ones included, re-enables failed nodes and ends the failure simulation, keeping A, B, base stations, waypoints, zones and settings. `applyPlan` then replaces all relays with the planned ones. `origin` still records whether a relay came from the planner; moving an auto relay turns it manual. The engine planner itself can still reuse existing relays passed to it (`tests/routing.test.ts`); the app just no longer passes any.
 
 **Link model** (`src/engine/propagation.ts`, `evaluateLink`) is the single physical model that everything else reuses:
 

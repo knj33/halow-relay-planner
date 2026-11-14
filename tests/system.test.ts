@@ -132,7 +132,26 @@ describe('areas and environments', () => {
     expect(useStore.getState().kFactor).toBe(1);
   });
 
-  it('replaces auto relays on re-plan but keeps manual ones', async () => {
+  it('starts a fresh plan clean: every relay goes, failed nodes come back, inputs stay', async () => {
+    const s = useStore.getState();
+    await s.setFixedArea({ lat: 45.8, lon: 6.8 }, 20_000);
+    s.placeNode('A', 45.78, 6.78);
+    s.placeNode('B', 45.82, 6.82);
+    const manual = s.placeNode('relay', 45.8, 6.8);
+    const base = s.placeNode('base', 45.79, 6.81);
+    s.updateNode(base, { enabled: false });
+    s.addWaypoint(45.81, 6.79);
+    useStore.getState().select(manual);
+    useStore.getState().clearForPlan();
+    const st = useStore.getState();
+    expect(st.nodes.filter((n) => n.kind === 'relay')).toHaveLength(0);
+    expect(st.nodes.map((n) => n.kind).sort()).toEqual(['A', 'B', 'base']);
+    expect(st.nodes.every((n) => n.enabled)).toBe(true);
+    expect(st.waypoints).toHaveLength(1);
+    expect(st.selectedId).toBeNull();
+  });
+
+  it('replaces every relay with the planned ones', async () => {
     const s = useStore.getState();
     await s.setFixedArea({ lat: 45.8, lon: 6.8 }, 20_000);
     const area = useStore.getState().area!;
@@ -153,8 +172,8 @@ describe('areas and environments', () => {
     s.applyPlan({ ...plan, relays: [{ x: 7000, y: 8000 }] }, area);
     await flush();
     const relays = useStore.getState().nodes.filter((n) => n.kind === 'relay');
-    expect(relays.map((r) => r.origin)).toEqual(['manual', 'auto']);
-    expect(useStore.getState().nodes.filter((n) => n.kind === 'relay')).toHaveLength(2);
+    expect(relays.map((r) => r.origin)).toEqual(['auto']);
+    expect(relays).toHaveLength(1);
   });
 });
 

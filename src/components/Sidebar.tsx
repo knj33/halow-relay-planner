@@ -151,7 +151,7 @@ export function ToolPanel({ onPlan, canPlan, planBlockedReason }: { onPlan: () =
         </button>
       </div>
       <p id="plan-note" className="hint">
-        {planBlockedReason ?? 'Heuristic search over sampled candidate sites. Replaces earlier auto-placed relays and reuses manual ones.'}
+        {planBlockedReason ?? 'Heuristic search over sampled candidate sites. Starts clean: removes every existing relay and brings failed nodes back, keeping A, B, base stations, waypoints and zones.'}
       </p>
       <button type="button" className="link-btn" onClick={loadDemo}>
         Load demo scenario (A, B and one base station)

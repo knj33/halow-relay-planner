@@ -136,6 +136,8 @@ interface State extends DeploymentState {
   flyToPreset: (site: GeoPoint) => void;
   loadDemo: () => void;
   loadTerrain: () => Promise<void>;
+  /** Start a fresh plan: remove every relay and bring failed nodes back online. */
+  clearForPlan: () => void;
   applyPlan: (result: PlanResult, area: PlanningArea) => void;
   setPlan: (plan: PlanState) => void;
   setRadio: (patch: Partial<RadioProfile>) => void;
@@ -427,10 +429,19 @@ export const useStore = create<State>((set, get) => ({
     }
   },
 
+  clearForPlan: () =>
+    set((s) => ({
+      // A new plan starts clean: every relay goes (hand-placed ones too), failed nodes come back,
+      // and the inputs stay: A, B, base stations, waypoints, zones and settings.
+      nodes: s.nodes.filter((n) => n.kind !== 'relay').map((n) => (n.enabled ? n : { ...n, enabled: true })),
+      selectedId: s.nodes.find((n) => n.id === s.selectedId)?.kind === 'relay' ? null : s.selectedId,
+    })),
+
   applyPlan: (result, area) => {
     const R = BODIES[get().body].radiusM;
     set((s) => {
-      const kept = s.nodes.filter((n) => !(n.kind === 'relay' && n.origin === 'auto'));
+      // The plan replaces every relay; only the planned ones remain.
+      const kept = s.nodes.filter((n) => n.kind !== 'relay');
       let id = kept.reduce((m, n) => Math.max(m, Number(n.id.split('-')[1]) || 0), 0);
       const added = result.relays.map((p) => {
         const g = gridToGeo(area, p.x, p.y, R);

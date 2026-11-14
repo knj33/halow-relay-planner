@@ -362,16 +362,21 @@ export function App() {
             : null;
 
   const onPlan = async () => {
+    if (!useStore.getState().terrain || !useStore.getState().area || planBlockedReason) return;
+    // Fresh plan: old relays disappear at once, failed nodes come back, the failure simulation ends.
+    useStore.getState().clearForPlan();
+    setSim(null);
     const st = useStore.getState();
-    if (!st.terrain || !st.area || planBlockedReason) return;
+    const grid = st.terrain;
+    const planArea = st.area;
+    if (!grid || !planArea) return;
     st.setPlan({ status: 'running' });
     setTab('plan');
     try {
-      const keep = st.nodes.filter((n) => !(n.kind === 'relay' && n.origin === 'auto'));
-      const keepInside = toEngineNodes(st.body, st.area, keep).inside;
-      const result = await runJob({ type: 'plan', grid: st.terrain, env, radio: st.radio, heights, options: st.planner, nodes: keepInside });
-      if (useStore.getState().terrain !== st.terrain) return; // environment changed while planning
-      if (result.status === 'ok') useStore.getState().applyPlan(result, st.area);
+      const keepInside = toEngineNodes(st.body, planArea, st.nodes).inside;
+      const result = await runJob({ type: 'plan', grid, env, radio: st.radio, heights, options: st.planner, nodes: keepInside });
+      if (useStore.getState().terrain !== grid) return; // environment changed while planning
+      if (result.status === 'ok') useStore.getState().applyPlan(result, planArea);
       useStore.getState().setPlan({ status: result.status, result });
     } catch (err) {
       useStore.getState().setPlan({ status: 'error', message: err instanceof Error ? err.message : String(err) });
