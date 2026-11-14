@@ -1,1 +1,2 @@
 - [Mars survey design](mars-survey-design.md) — UI redesigned to the approved Mars survey style; keep new UI in it
+- [Public repo](public-repo.md) — github.com/knj33/halow-relay-planner, public; HANDOFF.md + .claude/memory for agents
