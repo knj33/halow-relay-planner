@@ -102,41 +102,41 @@ export const smmsDeck: Deck = {
                 },
               },
               {
-                label: t(lang, 'რელიეფი', 'Terrain'),
+                label: t(lang, 'კავშირის დრო', 'Contact time'),
                 left: {
-                  figure: t(lang, '2–4 გავლა', '2–4 passes'),
+                  figure: t(lang, 'დღეში 2–4-ჯერ', '2–4 times a day'),
                   text: t(
                     lang,
                     <>
-                      დღეში, თითო თანამგზავრი<sup>2</sup>, მხოლოდ ჰორიზონტს ზემოთ: კრატერის კედლები და ქედები გავლას ამოკლებს.
+                      თითო თანამგზავრი ადგილს თავზე დღეში მხოლოდ 2–4-ჯერ გადაუვლის<sup>2</sup>. კავშირი მხოლოდ მაშინაა, სანამ ჰორიზონტს ზემოთაა, და კრატერის კედლები და ქედები ამ დროს კიდევ ამოკლებს.
                     </>,
                     <>
-                      A day per orbiter<sup>2</sup>, only while it is above the skyline: crater walls and ridges shorten every pass.
+                      Each orbiter passes over a site only 2–4 times a day<sup>2</sup>. There is a link only while it is above the horizon, and crater walls and ridges cut that time further.
                     </>,
                   ),
                 },
                 right: {
-                  figure: t(lang, 'გვერდს უვლის', 'Goes around'),
-                  text: t(lang, 'რეტრანსლატორები კრატერის კიდეებსა და ქედებზე დგას: დაფარვა რელიეფს მიჰყვება.', 'Relays stand on crater rims and ridges: coverage follows the terrain.'),
+                  figure: t(lang, 'მუდმივი', 'Always on'),
+                  text: t(lang, 'Node-ები კრატერის კიდეებსა და ქედებზე დგას: კავშირი მუდმივია და დაფარვა რელიეფს მიჰყვება.', 'Nodes stand on crater rims and ridges: the link is always there and coverage follows the terrain.'),
                 },
               },
               {
-                label: t(lang, 'მტყუნება', 'Failure'),
+                label: t(lang, 'საიმედოობა', 'Reliability'),
                 left: {
-                  figure: t(lang, '2001 წლიდან', 'Since 2001'),
+                  figure: t(lang, 'ძველი ფლოტი', 'Aging fleet'),
                   text: t(
                     lang,
                     <>
-                      სამეცნიერო თანამგზავრები, რელე მეორადი ფუნქციაა<sup>3</sup>; ფლოტი „მყიფე და დაბერებულია“<sup>4</sup>. MAVEN 2026 წლის ივნისში დაიკარგა<sup>2</sup>.
+                      რამდენიმე ძველი სამეცნიერო თანამგზავრი, რომლისთვისაც რელე მეორადი ფუნქციაა<sup>3</sup>; ფლოტი „მყიფე და დაბერებულია“<sup>4</sup>. თუ ერთი გაჩერდა, ჩანაცვლება არაა: MAVEN 2026 წლის ივნისში დაიკარგა<sup>2</sup>.
                     </>,
                     <>
-                      Science orbiters that relay as a second job<sup>3</sup>, in a fleet called “fragile and aging”<sup>4</sup>. MAVEN was lost in June 2026<sup>2</sup>.
+                      A few old science orbiters that relay as a second job<sup>3</sup>, in a fleet called “fragile and aging”<sup>4</sup>. When one stops there is no replacement: MAVEN was lost in June 2026<sup>2</sup>.
                     </>,
                   ),
                 },
                 right: {
                   figure: t(lang, 'ბევრი მარშრუტი', 'Many routes'),
-                  text: t(lang, 'რამდენიმე შესაძლო მარშრუტი: თუ ერთი დაეცა, სიგნალი მეზობლებით გადის.', 'Multiple possible routes: if one goes down, the signal goes through its neighbours.'),
+                  text: t(lang, 'რამდენიმე შესაძლო მარშრუტი: თუ ერთი node-ი დაეცა, სიგნალი მეზობელი node-ებით გადის.', 'Multiple possible routes: if one node goes down, the signal goes through its neighbours.'),
                 },
               },
             ]}
@@ -226,7 +226,7 @@ export const smmsDeck: Deck = {
             ? t(lang, 'იგივე ქსელი რელიეფზე, სიმაღლე 10×.', 'The same network on the terrain, hills raised 10×.')
             : step
               ? t(lang, 'მეში თვითაღდგენადია', 'The mesh heals itself')
-              : t(lang, '200 კმ, 63 რეტრანსლატორი, ორი დამოუკიდებელი მარშრუტი.', '200 km, 63 relays, two independent routes.');
+              : t(lang, '200 კმ, 63 node-ი, ორი დამოუკიდებელი მარშრუტი.', '200 km, 63 nodes, two independent routes.');
         return (
           <Caption title={title}>
             <p>{body}</p>
