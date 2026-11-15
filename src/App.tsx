@@ -560,6 +560,11 @@ export function App() {
   // still holds that grid the demo is loaded, so ensureDemo does nothing and nothing reloads.
   const demoGrid = useRef<unknown>(null);
   const demoLoading = useRef<Promise<void> | null>(null);
+  // Open the premade Arcadia demo on first visit, so the site starts on a working plan. ensureDemo
+  // shares its load with a presentation opened from a #/present link, so the demo loads only once.
+  useEffect(() => {
+    if (useStore.getState().nodes.length === 0) void bridgeImpl.current?.ensureDemo();
+  }, []);
   bridgeImpl.current = {
     loadPremadeDemo: async () => {
       await useStore.getState().loadPremadeDemo();
