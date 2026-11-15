@@ -1,4 +1,4 @@
-import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePresentation } from './present/state';
@@ -97,6 +97,8 @@ const TABS: [Tab, string][] = [
   ['assumptions', 'Assumptions'],
   ['engine', 'Engine'],
 ];
+/** The team's link page listing this project's repositories, shown next to the Costs tab. */
+const REPOS_URL = 'https://linktr.ee/SvanetisubaniSpaceAgency';
 type View = 'survey' | '3d' | 'globe';
 
 const TOOL_ICON: Record<Tool, ReactNode> = {
@@ -637,9 +639,16 @@ export function App() {
         <nav className="mast-nav" aria-label="Sections">
           <div role="tablist" aria-label="Sections" className="mast-tabs">
             {TABS.map(([id, label]) => (
-              <button key={id} type="button" role="tab" id={`tab-${id}`} aria-selected={tab === id} aria-controls={`panel-${id}`} className="cap-link" onClick={() => openTab(id)}>
-                {label}
-              </button>
+              <Fragment key={id}>
+                <button type="button" role="tab" id={`tab-${id}`} aria-selected={tab === id} aria-controls={`panel-${id}`} className="cap-link" onClick={() => openTab(id)}>
+                  {label}
+                </button>
+                {id === 'costs' && (
+                  <a className="cap-link" href={REPOS_URL} target="_blank" rel="noopener noreferrer">
+                    ამ პროექტის რეპოზიტორიები
+                  </a>
+                )}
+              </Fragment>
             ))}
           </div>
           {VISIBLE_BODIES.length > 1 && (
