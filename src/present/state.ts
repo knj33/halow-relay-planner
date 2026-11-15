@@ -1,4 +1,15 @@
 import { create } from 'zustand';
+import type { Lang } from './types';
+
+const LANG_KEY = 'halow.present.lang';
+function readLang(): Lang | null {
+  try {
+    const v = localStorage.getItem(LANG_KEY);
+    return v === 'en' || v === 'ka' ? v : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * The little state the rest of the app needs about the presentation: whether one is open, and
@@ -14,6 +25,9 @@ interface PresentationState {
   openDeck: (deckId: string | null, start?: { slide: number; step: number }) => void;
   close: () => void;
   setLive: (live: boolean) => void;
+  /** Chosen presentation language; null until chosen (the deck's first language applies). Remembered per browser. */
+  lang: Lang | null;
+  setLang: (lang: Lang) => void;
 }
 
 export const usePresentation = create<PresentationState>((set) => ({
@@ -24,4 +38,13 @@ export const usePresentation = create<PresentationState>((set) => ({
   openDeck: (deckId, start = { slide: 0, step: 0 }) => set({ open: true, deckId, start }),
   close: () => set({ open: false, live: false }),
   setLive: (live) => set((s) => (s.live === live ? s : { live })),
+  lang: readLang(),
+  setLang: (lang) => {
+    try {
+      localStorage.setItem(LANG_KEY, lang);
+    } catch {
+      /* private mode: the choice lasts this session only */
+    }
+    set({ lang });
+  },
 }));

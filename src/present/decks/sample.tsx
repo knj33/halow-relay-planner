@@ -1,5 +1,7 @@
-import { Caption, Columns, Cover, Figure, Frame, Points, Step } from '../kit';
+import { Caption, Columns, Compare, Cover, Figure, Frame, Points, Step } from '../kit';
 import type { Deck } from '../types';
+import { MeshHeal } from './MeshHeal';
+import { hardwareSlide } from './hardware';
 
 /**
  * Engine sample deck. It is a test card for the presentation engine, not the real talk: one slide
@@ -71,6 +73,88 @@ export const sampleDeck: Deck = {
         </Frame>
       ),
     },
+    {
+      id: 'satellite-vs-mesh',
+      title: 'Relay satellite vs surface mesh',
+      steps: 3,
+      transition: 'rise',
+      notes:
+        'Three builds, one row each. 1) Speed: Lunar Pathfinder relays surface data to Earth over X-band; 384,400 km / c = 1.28 s each way before any processing. Across 100 km of surface, light takes 0.33 ms; each hop adds its own radio processing on top. 2) Terrain: a sky link needs the satellite or Earth above the local skyline, so crater walls and ridges cut the usable time. NASA\'s Artemis III site selection prefers regions with more Earth visibility if it uses direct-to-Earth comms. A mesh puts relays on rims and ridges and hops around obstacles. 3) Failure: Pathfinder is one 280 kg spacecraft. A mesh has multiple possible routes, so losing one relay reroutes traffic (next slide shows it).',
+      render: () => (
+        <Frame kicker="Moon · Communications" title="Relay satellite or surface mesh?">
+          <Compare
+            leftTitle="Relay satellite"
+            rightTitle="HaLow surface mesh"
+            rows={[
+              {
+                label: 'Speed',
+                left: {
+                  figure: '≥ 1.28 s',
+                  text: (
+                    <>
+                      Each way, through Earth. Lunar Pathfinder relays surface data to Earth<sup>1</sup>, 384,400 km away<sup>2</sup>: light alone takes 1.28 s.
+                    </>
+                  ),
+                },
+                right: {
+                  figure: '0.33 ms',
+                  text: 'Crew-to-base traffic stays on the surface: light crosses 100 km in 0.33 ms, plus each hop’s radio processing.',
+                },
+              },
+              {
+                label: 'Terrain',
+                left: {
+                  figure: 'Skyline-bound',
+                  text: (
+                    <>
+                      The link works only while the satellite or Earth is above the local skyline. At the south pole, Earth visibility varies by site, and NASA weighs it when choosing landing regions<sup>3</sup>.
+                    </>
+                  ),
+                },
+                right: {
+                  figure: 'Goes around',
+                  text: 'Relays stand on rims and ridges and hop around a hill or down into a crater, so coverage follows the ground.',
+                },
+              },
+              {
+                label: 'Failure',
+                left: {
+                  figure: '1 craft',
+                  text: (
+                    <>
+                      Lunar Pathfinder is a single 280 kg spacecraft<sup>1</sup>. If it fails, the link is gone until a replacement launches.
+                    </>
+                  ),
+                },
+                right: {
+                  figure: 'Many routes',
+                  text: 'Multiple possible routes: lose one relay and traffic reroutes through its neighbours.',
+                },
+              },
+            ]}
+            sources={[
+              <>ESA / eoPortal, “Lunar Pathfinder”: one 280 kg spacecraft in an elliptical lunar frozen orbit, relaying S-band/UHF from the surface to Earth over X-band; 8-year design life.</>,
+              <>NASA NSSDC, Moon Fact Sheet: mean Earth–Moon distance 384,400 km (384,400 km ÷ speed of light = 1.28 s; 100 km ÷ speed of light = 0.33 ms).</>,
+              <>T. George, M. A. Rubio, S. J. Lawrence, P. Curell, “Artemis III Site Selection Update: Downselection From Thirteen to Nine Candidate Regions”, Lunar and Planetary Science Conference 2026, NASA NTRS 20250011660.</>,
+            ]}
+          />
+        </Frame>
+      ),
+    },
+    {
+      id: 'mesh-heals',
+      title: 'A mesh heals itself',
+      steps: 2,
+      transition: 'fade',
+      notes:
+        'Animated, two builds. Start: signal pulses flow A to B hop by hop. Next: the centre relay goes dark, the route past it turns red and B reports no signal. Next: a standby relay wakes, fills the gap, the new route draws in green and the pulses reach B again. The live slides after this show the same thing on the real 200 km plan.',
+      render: () => (
+        <Frame kicker="Mesh networks · Self-healing" title="One relay goes dark. The signal still arrives.">
+          <MeshHeal />
+        </Frame>
+      ),
+    },
+    hardwareSlide,
     {
       id: 'live-demo',
       title: 'Live: the 200 km demo',

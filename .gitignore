@@ -9,3 +9,10 @@ public/engine/*.tar.gz
 
 # Reference image of unknown copyright; see HANDOFF.md
 design idea/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example

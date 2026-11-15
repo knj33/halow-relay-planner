@@ -17,5 +17,7 @@ export const PALETTE = {
 export const STATUS_COLOR: Record<LinkStatus, string> = { good: '#a7c78f', marginal: '#e3b85c', fail: '#e46a5a' };
 export const STATUS_LABEL: Record<LinkStatus, string> = { good: 'Good', marginal: 'Marginal', fail: 'Blocked' };
 export const NODE_COLOR: Record<NodeKind, string> = { A: '#fbf1e4', B: '#f0c3a8', relay: '#e8a07e', base: '#a9c4c3' };
+/** Failure simulation: vivid on purpose, so the dead old route and the newly chosen one read at a glance. */
+export const SIM_COLOR = { dead: '#ff3b2f', chosen: '#5dff6e' } as const;
 export const SAT_COLOR = '#a9c4c3';
 export const COVERAGE_COLOR = { none: '#7a2a22', marginal: '#b8862e', good: '#6f9a5a' };

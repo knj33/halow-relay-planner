@@ -170,6 +170,22 @@ html:has(.app.is-presenting) body {
   height: 1px;
   background: var(--salmon);
 }
+.pz-points.numbered {
+  counter-reset: pz-point;
+}
+.pz-points.numbered li {
+  counter-increment: pz-point;
+  padding-left: 72px;
+}
+.pz-points.numbered li::before {
+  content: counter(pz-point) '.';
+  top: 0;
+  width: auto;
+  height: auto;
+  background: none;
+  font-family: var(--mono);
+  color: var(--salmon);
+}
 .pz-columns {
   display: grid;
   gap: 96px;
@@ -198,6 +214,101 @@ html:has(.app.is-presenting) body {
   border-top: 1px solid var(--line-strong);
   font-size: 26px;
   color: var(--muted);
+}
+/* OS slide: the console screenshot with what it reports beside it. */
+.pz-frame:has(.pz-os) .pz-title {
+  margin-bottom: 30px;
+  max-width: none;
+  font-size: 64px;
+}
+.pz-os {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 56px;
+  align-items: start;
+}
+.pz-os-shot {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pz-os-shot img {
+  display: block;
+  height: 640px;
+  width: auto;
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+}
+.pz-os-shot figcaption {
+  font-family: var(--mono);
+  font-size: 17px;
+  color: var(--muted);
+}
+.pz-os-points {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 26px;
+}
+.pz-os-points li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 22px;
+  border-left: 2px solid var(--salmon);
+}
+.pz-os-points b {
+  font-weight: 500;
+  font-size: 30px;
+  color: var(--traverse);
+}
+.pz-os-points span {
+  font-size: 21px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+/* Thank-you slide: the mascot stands behind the title, which is set bold over it. */
+.pz-thanks {
+  position: relative;
+  height: 100%;
+}
+.pz-thanks-art {
+  position: absolute;
+  right: 40px;
+  bottom: -120px;
+  height: 1060px;
+  width: auto;
+  pointer-events: none;
+}
+.pz-thanks .pz-cover {
+  position: relative;
+}
+/* QR code, bottom left: 25 modules at ~280 px is about 10 px per module on a 1080 p screen,
+   comfortably scannable from a phone in the room. White tile = the quiet zone scanners need. */
+.pz-thanks-qr {
+  position: absolute;
+  left: 0;
+  bottom: -60px;
+  width: 280px;
+  height: 280px;
+  padding: 14px;
+  box-sizing: content-box;
+  background: #fff;
+  image-rendering: pixelated;
+}
+.pz-thanks .pz-cover-title {
+  font-weight: 700;
+  text-shadow:
+    0 4px 24px rgba(13, 10, 8, 0.85),
+    0 0 2px rgba(13, 10, 8, 0.9);
+}
+.pz-cover-title.is-phrase {
+  font-size: 180px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 .pz-cover {
   height: 100%;
@@ -231,6 +342,379 @@ html:has(.app.is-presenting) body {
   color: var(--muted);
 }
 
+/* ---- comparison table: the right-hand (picked) column carries a green tint ---- */
+.pz-frame:has(.pz-compare) .pz-kicker {
+  margin-bottom: 16px;
+}
+.pz-frame:has(.pz-compare) .pz-title {
+  margin-bottom: 34px;
+  max-width: none;
+  font-size: 60px;
+}
+.pz-compare {
+  --pick: #5dff6e;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+.pz-compare-grid {
+  display: grid;
+  gap: 14px;
+}
+.pz-compare-head,
+.pz-compare-row {
+  display: grid;
+  grid-template-columns: 260px 1fr 1fr;
+  gap: 0 18px;
+  align-items: stretch;
+}
+.pz-compare-col {
+  padding: 0 30px 6px;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.pz-compare-col.is-pick {
+  color: var(--pick);
+}
+.pz-compare-label {
+  align-self: center;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--salmon-text);
+}
+.pz-compare-cell {
+  padding: 20px 30px 22px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+}
+.pz-compare-cell.is-pick {
+  border-color: rgba(93, 255, 110, 0.55);
+  border-left: 3px solid var(--pick);
+  background: linear-gradient(90deg, rgba(93, 255, 110, 0.16), rgba(93, 255, 110, 0.06));
+  box-shadow: 0 0 34px rgba(93, 255, 110, 0.12);
+}
+.pz-compare-fig {
+  margin: 0 0 8px;
+  font-family: var(--mono);
+  font-size: 46px;
+  font-weight: 300;
+  line-height: 1.05;
+  color: var(--text);
+}
+.pz-compare-cell.is-pick .pz-compare-fig {
+  color: var(--pick);
+}
+.pz-compare-text {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.pz-compare-cell.is-pick .pz-compare-text {
+  color: var(--text);
+}
+.pz-compare sup {
+  font-size: 0.62em;
+  color: var(--muted);
+}
+.pz-frame:has(.pz-compare.dense) .pz-title {
+  margin-bottom: 24px;
+  font-size: 54px;
+}
+.pz-compare.dense {
+  gap: 20px;
+}
+.pz-compare.dense .pz-compare-grid {
+  gap: 10px;
+}
+.pz-compare.dense .pz-compare-cell {
+  padding: 14px 26px 16px;
+}
+.pz-compare.dense .pz-compare-fig {
+  margin-bottom: 6px;
+  font-size: 44px;
+}
+.pz-compare.dense .pz-compare-text {
+  font-size: 20px;
+  line-height: 1.4;
+}
+.pz-compare.dense .pz-compare-label,
+.pz-compare.dense .pz-compare-col {
+  letter-spacing: 0.08em;
+}
+.pz-compare.dense .pz-sources {
+  padding-top: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.pz-sources {
+  margin: 0;
+  padding: 16px 0 0 24px;
+  border-top: 1px solid var(--line);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ---- map-style art (decks/MapArt.tsx): the survey map's glyphs on slides ---- */
+.pz-map-label {
+  font-family: var(--display);
+  font-weight: 500;
+}
+.pz-map-signal {
+  filter: drop-shadow(0 0 6px currentColor);
+}
+/* Side art on the opening slides: the right-hand side of the stage. */
+.pz-side-art {
+  position: absolute;
+  right: 150px;
+  top: 50%;
+  width: 760px;
+  height: 760px;
+  transform: translateY(-50%);
+  overflow: visible;
+}
+
+/* ---- self-healing mesh animation (decks/MeshHeal.tsx) ---- */
+.pz-frame:has(.pz-mesh) .pz-kicker {
+  margin-bottom: 16px;
+}
+.pz-frame:has(.pz-mesh) .pz-title {
+  margin-bottom: 20px;
+  max-width: none;
+  font-size: 60px;
+}
+.pz-mesh {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.pz-mesh-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.pz-mesh-link {
+  stroke: rgba(236, 205, 178, 0.22);
+  stroke-width: 2;
+}
+.pz-mesh-route {
+  fill: none;
+  stroke: var(--salmon);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pz-mesh-node .pz-mesh-ring {
+  fill: #16110e;
+  stroke: var(--salmon);
+  stroke-width: 3;
+}
+.pz-mesh-node .pz-mesh-dot {
+  fill: var(--salmon);
+}
+.pz-mesh-node {
+  transition: opacity 500ms ease;
+}
+.pz-mesh-node.is-dark {
+  opacity: 0.35;
+}
+.pz-mesh-node.is-dark .pz-mesh-ring {
+  stroke: #ff3b2f;
+}
+.pz-mesh-node.is-dark .pz-mesh-dot {
+  fill: #5a4a40;
+}
+.pz-mesh-node.is-asleep {
+  opacity: 0.45;
+}
+.pz-mesh-node.is-asleep .pz-mesh-ring {
+  stroke: var(--muted);
+  stroke-dasharray: 5 6;
+}
+.pz-mesh-node.is-asleep .pz-mesh-dot {
+  fill: transparent;
+}
+.pz-mesh-node.is-awake .pz-mesh-ring {
+  stroke: #5dff6e;
+  stroke-width: 4;
+}
+.pz-mesh-node.is-awake .pz-mesh-dot {
+  fill: #5dff6e;
+}
+.pz-mesh-tag {
+  font: 500 20px var(--display);
+  letter-spacing: 0.24em;
+}
+.pz-mesh-end-ring {
+  fill: none;
+  stroke: var(--traverse);
+  stroke-width: 2;
+  opacity: 0.6;
+}
+.pz-mesh-end-dot {
+  fill: var(--traverse);
+}
+.pz-mesh-end-label {
+  font: 500 26px var(--display);
+  fill: #16110e;
+}
+.pz-mesh-end-sub {
+  fill: var(--muted);
+}
+.pz-mesh-end.is-lost .pz-mesh-end-ring {
+  stroke: #ff3b2f;
+  opacity: 1;
+}
+.pz-mesh-end.is-lost .pz-mesh-end-sub {
+  fill: #ff3b2f;
+}
+.pz-mesh-end.is-healed .pz-mesh-end-ring {
+  stroke: #5dff6e;
+  stroke-width: 3;
+  opacity: 1;
+}
+.pz-mesh-end.is-healed .pz-mesh-end-sub {
+  fill: #5dff6e;
+}
+/* Dead remainder of the old route: spreads out from the last live relay in red. */
+.pz-mesh-dead path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pz-mesh-dead-under {
+  stroke-width: 14;
+  opacity: 0.4;
+  stroke-dasharray: 1;
+  animation: sv-draw 0.9s ease-out both;
+}
+.pz-mesh-dead-core {
+  stroke-width: 4;
+  stroke-dasharray: 10 9;
+  animation: sv-reveal 0.5s ease-out 0.2s both;
+}
+.pz-mesh-dead.settled {
+  opacity: 0.55;
+}
+.pz-mesh-dead.settled path {
+  animation: none;
+}
+/* New route: draws in green, then its glow breathes and stays. */
+.pz-mesh-new path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+}
+.pz-mesh-new-core {
+  stroke-width: 5;
+  animation: sv-draw 1.6s ease-in-out 0.5s both;
+}
+.pz-mesh-new-glow {
+  stroke-width: 20;
+  opacity: 0.35;
+  animation:
+    sv-draw 1.6s ease-in-out 0.5s both,
+    pz-mesh-breathe 1s ease-in-out 2.1s 6 alternate;
+}
+@keyframes pz-mesh-breathe {
+  to {
+    opacity: 0.12;
+  }
+}
+.pz-mesh-burst-ring,
+.pz-mesh-wake-ring {
+  fill: none;
+  stroke-width: 3;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sv-burst 1.1s ease-out 2 both;
+}
+.pz-mesh-caption {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.pz-mesh-caption strong {
+  font-weight: 500;
+  color: var(--traverse);
+}
+.pz-mesh.step-1 .pz-mesh-caption strong {
+  color: #ff3b2f;
+}
+.pz-mesh.step-2 .pz-mesh-caption strong {
+  color: #5dff6e;
+}
+.app:not(.motion-on) .pz-mesh * {
+  animation: none !important;
+}
+.app:not(.motion-on) .pz-mesh-burst-ring,
+.app:not(.motion-on) .pz-mesh-wake-ring {
+  opacity: 0;
+}
+
+/* ---- hardware showcase: PCBs turning on turntables (decks/HardwareShowcase.tsx) ---- */
+.pz-frame:has(.pz-hw) .pz-kicker {
+  margin-bottom: 16px;
+}
+.pz-frame:has(.pz-hw) .pz-title {
+  margin-bottom: 18px;
+  max-width: none;
+  font-size: 60px;
+}
+.pz-hw {
+  display: grid;
+  gap: 48px;
+}
+.pz-hw-item {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pz-hw-stage {
+  position: relative;
+  height: 520px;
+  background: radial-gradient(ellipse at 50% 58%, rgba(232, 160, 126, 0.13), transparent 66%);
+}
+.pz-hw-canvas {
+  position: absolute !important;
+  inset: 0;
+}
+.pz-hw-placeholder {
+  position: absolute;
+  inset: 22% 18%;
+  border: 1px solid var(--line);
+  transform: perspective(600px) rotateX(38deg);
+}
+.pz-hw-name {
+  margin: 0;
+  font-size: 30px;
+  color: var(--traverse);
+}
+.pz-hw-specs {
+  margin: 4px 0 8px;
+  font-family: var(--mono);
+  font-size: 19px;
+  letter-spacing: 0.04em;
+  color: var(--salmon-text);
+}
+.pz-hw-detail {
+  margin: 0;
+  max-width: 48ch;
+  font-size: 20px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
 /* ---- live slides: the planner is the slide, the stage only carries a caption card ---- */
 .pz-root.is-live {
   pointer-events: none;
@@ -242,31 +726,89 @@ html:has(.app.is-presenting) body {
   padding: 0;
   background: none !important;
 }
-/* Bottom right: the planner keeps its own panels at the left and its tools at the top right. */
+/* Bottom right, inside the right-hand side column that a square map leaves on a 16:9 screen
+   ((1920 − 1080) / 2 = 420 px), so it never covers the map. Panels sit left, tools top right. */
 .pz-caption {
   position: absolute;
-  right: 150px;
-  bottom: 120px;
-  max-width: 700px;
-  padding: 34px 40px 36px;
+  right: 28px;
+  bottom: 40px;
+  width: 372px;
+  padding: 26px 28px 28px;
   border: 1px solid var(--line-strong);
   border-left: 2px solid var(--salmon);
   background: rgba(13, 10, 8, 0.94);
   pointer-events: auto;
 }
 .pz-caption-title {
-  margin: 0 0 14px;
-  font-size: 40px;
+  margin: 0 0 12px;
+  font-size: 32px;
   font-weight: 400;
   color: var(--traverse);
 }
 .pz-caption-body {
-  font-size: 26px;
+  font-size: 22px;
   line-height: 1.45;
   color: var(--text);
 }
 .pz-caption-body p {
   margin: 0;
+}
+
+/* Slide number, top right of every slide (stage coordinates). */
+.pz-slide-num {
+  position: absolute;
+  top: 44px;
+  right: 56px;
+  z-index: 6;
+  font: 400 22px var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  opacity: 0.6;
+  pointer-events: none;
+}
+.pz-slide-num-of {
+  opacity: 0.55;
+}
+
+/* ---- language toggle (top) and the faint corner notice ---- */
+.pz-lang {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 30;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+.pz-lang button {
+  min-height: 0;
+  padding: 4px 12px;
+  border: 1px solid transparent;
+  background: none;
+  font: 500 12px var(--display);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text);
+  opacity: 0.28;
+  cursor: pointer;
+  transition: opacity 200ms ease;
+}
+.pz-lang button:hover,
+.pz-lang button:focus-visible {
+  opacity: 0.9;
+  border-color: var(--line);
+}
+.pz-notice {
+  position: absolute;
+  right: 14px;
+  bottom: 8px;
+  z-index: 5;
+  margin: 0;
+  font: 400 11px var(--display);
+  letter-spacing: 0.08em;
+  color: var(--text);
+  opacity: 0.32;
+  pointer-events: none;
 }
 
 /* ---- chrome: blanking, progress, controls, panels ---- */

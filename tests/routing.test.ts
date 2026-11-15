@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { analyzeNetwork, bestPath, buildAdjacency, evaluateNetwork, nodeDisjointPaths, planRelays, reachableFrom, sampleCandidates } from '../src/engine';
+import { analyzeNetwork, bestPath, buildAdjacency, evaluateNetwork, nodeDisjointPaths, planRelays, reachableFrom, sampleCandidates, servingNodeIds } from '../src/engine';
 import type { SiteNode } from '../src/engine';
 import { EARTH, flatGrid, heights, node, radio, ridgeGrid } from './helpers';
 
@@ -116,6 +116,16 @@ describe('relay failure and chain vs mesh', () => {
 
     const bothDown = analyse([...base, node('r1', 'relay', 5000, 4000, false), node('r2', 'relay', 5000, 6000, false)]);
     expect(bothDown.connected).toBe(false);
+  });
+
+  it('a relay cut off by a failure no longer serves the crew unless a base station backs it', () => {
+    const serving = (nodes: SiteNode[]) => [...servingNodeIds(nodes, evaluateNetwork(grid, EARTH, radio, heights, nodes))].sort();
+    const east = node('r2', 'relay', 8000, 3000);
+    expect(serving([...base, node('r1', 'relay', 5000, 5000), east])).toEqual(['A', 'B', 'r1', 'r2']);
+    // The crest relay fails: r2 and B are still on the air but reach neither A nor a base station.
+    expect(serving([...base, node('r1', 'relay', 5000, 5000, false), east])).toEqual(['A']);
+    // A base station on B's side carries that side home over the satellite.
+    expect(serving([...base, node('r1', 'relay', 5000, 5000, false), east, node('s1', 'base', 8500, 7000)])).toEqual(['A', 'B', 'r2', 's1']);
   });
 
   it('reports incomplete until both endpoints exist', () => {

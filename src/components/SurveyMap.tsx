@@ -5,7 +5,7 @@ import type { CoverageMap, HeightGrid, NetworkLink, SiteNode, StationBackhaul, S
 import { NO_GO_SLOPE_DEG, buildPaths, buildRasters, coverageCanvas, drawSurvey, smooth } from '../survey/draw';
 import type { Pt } from '../survey/draw';
 import { MAX_SIDE, tileCacheFor } from '../survey/tileCache';
-import { PALETTE, STATUS_COLOR } from '../theme';
+import { PALETTE, SIM_COLOR, STATUS_COLOR } from '../theme';
 
 export { NO_GO_SLOPE_DEG };
 
@@ -18,6 +18,10 @@ export interface SimView {
   /** Radio route and crew route before the change, faded out while the new ones draw in. */
   ghostRoute: Pt[];
   ghostWalk: Pt[] | null;
+  /** Index in ghostRoute of the failed node (-1: not on the route). From there on the old radio route is dead. */
+  routeCut: number;
+  /** Index in ghostWalk of the old crew route's closest approach to the failed node (-1: none). From there on it is dead. */
+  walkCut: number;
 }
 
 /** Hazard and coverage rasters from the traverse worker (grid nodes, row 0 = south). */
@@ -26,7 +30,8 @@ export interface SafetyLayer {
   hazards: Uint8Array;
 }
 
-function safetyCanvas(grid: HeightGrid, layer: SafetyLayer): HTMLCanvasElement {
+/** Coverage and hazard shading as a canvas, one pixel per grid node, north at the top. Shared with the 3D view. */
+export function safetyCanvas(grid: HeightGrid, layer: SafetyLayer): HTMLCanvasElement {
   const { cols, rows } = grid;
   const img = new ImageData(cols, rows);
   for (let r = 0; r < rows; r++) {
@@ -159,26 +164,19 @@ function SurveyMapImpl({ grid, layers, nodes, labels, links, route, criticalIds,
     [clamp, W, H],
   );
 
-  // A new grid opens as large as possible (filling the frame) while still showing every node.
-  const nodesRef = useRef(nodes);
-  nodesRef.current = nodes;
+  // A new grid opens on the whole planning area, centred; the frame's side space holds the panels.
+  // It re-opens that way when the frame changes size a lot (full screen, a live presentation slide).
+  const fittedBox = useRef<{ w: number; h: number } | null>(null);
   useEffect(() => {
-    if (box.w <= 0) return;
-    const ns = nodesRef.current;
-    if (!ns.length) {
-      setView({ cx: W / 2, cy: H / 2, zoom: coverZoom });
-      return;
-    }
-    const xs = ns.map((n) => n.x);
-    const ys = ns.map((n) => n.y);
-    const pad = Math.max(500, 0.12 * Math.max(W, H));
-    const bw = Math.max(...xs) - Math.min(...xs) + 2 * pad;
-    const bh = Math.max(...ys) - Math.min(...ys) + 2 * pad;
-    // Leave room for the bottom control bar.
-    const zoom = Math.min(coverZoom, Math.min(box.w / bw, (box.h - 90) / bh) / fit);
-    setView({ cx: (Math.max(...xs) + Math.min(...xs)) / 2, cy: (Math.max(...ys) + Math.min(...ys)) / 2 - 30 / (fit * zoom), zoom });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grid, box.w > 0]);
+    fittedBox.current = null;
+  }, [grid]);
+  useEffect(() => {
+    if (box.w <= 0 || box.h <= 0) return;
+    const f = fittedBox.current;
+    if (f && Math.abs(box.w - f.w) < 0.15 * f.w && Math.abs(box.h - f.h) < 0.15 * f.h) return;
+    fittedBox.current = { w: box.w, h: box.h };
+    setView({ cx: W / 2, cy: H / 2, zoom: 1 });
+  }, [grid, box.w, box.h, W, H, setView]);
   // Keep the view valid when the frame resizes.
   useEffect(() => {
     setViewRaw((v) => {
@@ -508,6 +506,39 @@ function SurveyMapImpl({ grid, layers, nodes, labels, links, route, criticalIds,
   const routeKey = route.join('|');
   const routeD = useMemo(() => path(routeNodes), [routeKey, byId]); // eslint-disable-line react-hooks/exhaustive-deps
   const corridorD = walkSmooth ? walkD : routeD;
+  // Failure simulation: the old routes split at the failed node into a still-usable lead-in (fades
+  // out) and a dead remainder (red). Built once per simulation, not per render.
+  const simSeq = sim?.seq ?? 0;
+  const simParts = useMemo(() => {
+    if (!sim) return null;
+    const { ghostRoute: gr, ghostWalk: gw, routeCut: rc, walkCut: wc } = sim;
+    const fade = {
+      walk: gw && gw.length > 1 ? path(smooth(wc >= 0 ? gw.slice(0, wc + 1) : gw, 3)) : '',
+      route: gr.length > 1 ? path(rc >= 0 ? gr.slice(0, rc + 1) : gr) : '',
+    };
+    const dead = {
+      walk: gw && wc >= 0 ? path(smooth(gw.slice(wc), 3)) : '',
+      route: rc >= 0 && gr.length - rc > 1 ? path(gr.slice(rc)) : '',
+    };
+    return { fade, dead: dead.walk || dead.route ? dead : null };
+  }, [simSeq]); // eslint-disable-line react-hooks/exhaustive-deps
+  const deadLayer = (settled: boolean, part: 'walk' | 'route' | 'both' = 'both') =>
+    simParts?.dead && (
+      <g pointerEvents="none" aria-hidden="true" className={`sv-dead${settled ? ' settled' : ''}`}>
+        {simParts.dead.walk && part !== 'route' && (
+          <>
+            <path className="sv-dead-under" d={simParts.dead.walk} pathLength={1} fill="none" stroke={SIM_COLOR.dead} strokeOpacity={0.55} strokeWidth={12 * k} strokeLinecap="round" strokeLinejoin="round" />
+            <path className="sv-dead-core" d={simParts.dead.walk} fill="none" stroke={SIM_COLOR.dead} strokeWidth={3.2 * k} strokeDasharray={`${5 * k} ${4 * k}`} strokeLinecap="round" strokeLinejoin="round" />
+          </>
+        )}
+        {simParts.dead.route && part !== 'walk' && (
+          <>
+            <path className="sv-dead-under" d={simParts.dead.route} pathLength={1} fill="none" stroke={SIM_COLOR.dead} strokeOpacity={0.5} strokeWidth={8 * k} strokeLinecap="round" strokeLinejoin="round" />
+            <path className="sv-dead-core" d={simParts.dead.route} fill="none" stroke={SIM_COLOR.dead} strokeWidth={2.2 * k} strokeDasharray={`${2 * k} ${4 * k}`} strokeLinecap="round" />
+          </>
+        )}
+      </g>
+    );
   const routePairs = new Set<string>();
   for (let i = 0; i + 1 < route.length; i++) {
     routePairs.add(`${route[i]}|${route[i + 1]}`);
@@ -523,7 +554,7 @@ function SurveyMapImpl({ grid, layers, nodes, labels, links, route, criticalIds,
   }, [nodes]);
   const fontPx = 12 * k;
   const scaleL = niceLength(110 / s);
-  const zoomPct = Math.round((v.zoom / coverZoom) * 100);
+  const zoomPct = Math.round(v.zoom * 100); // 100% = the whole area
 
   return (
     <div ref={rootRef} className="survey">
@@ -646,17 +677,27 @@ function SurveyMapImpl({ grid, layers, nodes, labels, links, route, criticalIds,
           })}
         </g>
 
-        {sim && sim.phase !== 'failing' && (
+        {sim && simParts && sim.phase !== 'failing' && (
           <g pointerEvents="none" aria-hidden="true" key={`ghost-${sim.seq}`} className="sv-ghost">
-            {sim.ghostWalk && sim.ghostWalk.length > 1 && <path d={path(smooth(sim.ghostWalk, 3))} fill="none" stroke={PALETTE.traverse} strokeWidth={2.3 * k} strokeDasharray={`${4 * k} ${4 * k}`} strokeLinecap="round" />}
-            {sim.ghostRoute.length > 1 && <path d={path(sim.ghostRoute)} fill="none" stroke={PALETTE.salmon} strokeWidth={2 * k} strokeDasharray={`${2 * k} ${4 * k}`} strokeLinecap="round" />}
+            {simParts.fade.walk && <path d={simParts.fade.walk} fill="none" stroke={PALETTE.traverse} strokeWidth={2.3 * k} strokeDasharray={`${4 * k} ${4 * k}`} strokeLinecap="round" />}
+            {simParts.fade.route && <path d={simParts.fade.route} fill="none" stroke={PALETTE.salmon} strokeWidth={2 * k} strokeDasharray={`${2 * k} ${4 * k}`} strokeLinecap="round" />}
           </g>
         )}
+        {/* Once the new route is chosen, the dead remainder sits under it; until then it is drawn on top. */}
+        {sim && sim.phase === 'done' && <g key={`dead-walk-${sim.seq}-settled`}>{deadLayer(true, 'walk')}</g>}
         {walkSmooth && (
           <g pointerEvents="none" aria-hidden="true" key={`walk-${sim ? walkSeq : 0}`} className={sim && sim.phase !== 'failing' ? 'sv-draw' : undefined}>
             <path d={walkD} pathLength={1} fill="none" stroke={PALETTE.traverse} strokeOpacity={0.12} strokeWidth={11 * k} strokeLinecap="round" strokeLinejoin="round" />
             <path d={walkD} pathLength={1} fill="none" stroke={PALETTE.traverse} strokeOpacity={0.22} strokeWidth={6 * k} strokeLinecap="round" strokeLinejoin="round" />
             <path d={walkD} pathLength={1} fill="none" stroke={PALETTE.traverse} strokeWidth={2.3 * k} strokeLinecap="round" strokeLinejoin="round" />
+          </g>
+        )}
+        {sim && sim.phase === 'done' && walkSmooth && (
+          // The newly chosen crew route glows green as it draws in (under the gap and hazard marks).
+          <g pointerEvents="none" aria-hidden="true" key={`chosen-walk-${sim.seq}-${walkSeq}`} className="sv-chosen">
+            <path className="sv-chosen-glow" d={walkD} pathLength={1} fill="none" stroke={SIM_COLOR.chosen} strokeOpacity={0.24} strokeWidth={16 * k} strokeLinecap="round" strokeLinejoin="round" />
+            <path className="sv-chosen-glow" d={walkD} pathLength={1} fill="none" stroke={SIM_COLOR.chosen} strokeOpacity={0.45} strokeWidth={7 * k} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={walkD} pathLength={1} fill="none" stroke={SIM_COLOR.chosen} strokeWidth={2.6 * k} strokeLinecap="round" strokeLinejoin="round" />
           </g>
         )}
         {walk && (
@@ -718,6 +759,20 @@ function SurveyMapImpl({ grid, layers, nodes, labels, links, route, criticalIds,
           })}
         </g>
 
+        {sim && sim.phase !== 'done' && <g key={`dead-${sim.seq}`}>{deadLayer(false)}</g>}
+        {sim && sim.phase === 'done' && <g key={`dead-route-${sim.seq}-settled`}>{deadLayer(true, 'route')}</g>}
+        {sim && sim.phase === 'done' && (
+          // The newly chosen crew route and radio route, glowing green as they draw in.
+          <g pointerEvents="none" aria-hidden="true" key={`chosen-${sim.seq}-${walkSeq}`} className="sv-chosen">
+            {routeNodes.length > 1 && (
+              <>
+                <path className="sv-chosen-glow" d={routeD} pathLength={1} fill="none" stroke={SIM_COLOR.chosen} strokeOpacity={0.35} strokeWidth={8 * k} strokeLinecap="round" strokeLinejoin="round" />
+                <path d={routeD} pathLength={1} fill="none" stroke={SIM_COLOR.chosen} strokeWidth={1.8 * k} strokeLinecap="round" strokeLinejoin="round" />
+              </>
+            )}
+          </g>
+        )}
+
         <g pointerEvents="none" aria-hidden="true">
           {stations.map((st) => {
             const n = byId.get(st.stationId);
@@ -764,10 +819,10 @@ function SurveyMapImpl({ grid, layers, nodes, labels, links, route, criticalIds,
           return (
             <g key={`burst-${sim.seq}`} pointerEvents="none" aria-hidden="true">
               {[0, 1, 2].map((i) => (
-                <circle key={i} cx={sx(n.x)} cy={sy(n.y)} r={34 * k} fill="none" stroke={fail ? STATUS_COLOR.fail : STATUS_COLOR.good} strokeWidth={2 * k} className="sv-burst" style={{ animationDelay: `${i * 260}ms` }} />
+                <circle key={i} cx={sx(n.x)} cy={sy(n.y)} r={34 * k} fill="none" stroke={fail ? SIM_COLOR.dead : SIM_COLOR.chosen} strokeWidth={2 * k} className="sv-burst" style={{ animationDelay: `${i * 260}ms` }} />
               ))}
               {fail && sim.phase !== 'failing' && (
-                <path d={`M${sx(n.x) - 9 * k},${sy(n.y) - 9 * k}L${sx(n.x) + 9 * k},${sy(n.y) + 9 * k}M${sx(n.x) + 9 * k},${sy(n.y) - 9 * k}L${sx(n.x) - 9 * k},${sy(n.y) + 9 * k}`} stroke={STATUS_COLOR.fail} strokeWidth={2.4 * k} strokeLinecap="round" />
+                <path d={`M${sx(n.x) - 9 * k},${sy(n.y) - 9 * k}L${sx(n.x) + 9 * k},${sy(n.y) + 9 * k}M${sx(n.x) + 9 * k},${sy(n.y) - 9 * k}L${sx(n.x) - 9 * k},${sy(n.y) + 9 * k}`} stroke={SIM_COLOR.dead} strokeWidth={2.4 * k} strokeLinecap="round" />
               )}
             </g>
           );
@@ -923,6 +978,18 @@ function SurveyMapImpl({ grid, layers, nodes, labels, links, route, criticalIds,
                 <li>
                   <i className="lg-link dotted" style={{ borderColor: STATUS_COLOR.fail }} /> Blocked
                 </li>
+                {sim && (
+                  <>
+                    {sim.kind === 'fail' && (
+                      <li>
+                        <i className="lg-link dashed" style={{ borderColor: SIM_COLOR.dead }} /> Old route past the failed node, no longer usable
+                      </li>
+                    )}
+                    <li>
+                      <i className="lg-walk" style={{ background: SIM_COLOR.chosen, boxShadow: `0 0 6px ${SIM_COLOR.chosen}` }} /> Newly chosen route
+                    </li>
+                  </>
+                )}
               </ul>
             </div>
           )}
@@ -942,10 +1009,7 @@ function SurveyMapImpl({ grid, layers, nodes, labels, links, route, criticalIds,
             </svg>
           </button>
           <button type="button" className="bar-btn" title="Show the whole planning area (0)" onClick={() => setView({ cx: W / 2, cy: H / 2, zoom: 1 })}>
-            Fit area
-          </button>
-          <button type="button" className="bar-btn" title="Fill the frame" onClick={() => setView((p) => ({ ...p, zoom: coverZoom }))}>
-            Fill
+            Whole area
           </button>
         </div>
       </div>

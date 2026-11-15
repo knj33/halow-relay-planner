@@ -7,7 +7,7 @@ import type { SlideContext } from './types';
  * (`.pz-*` rules in styles.css). Slides can use plain JSX too; these just keep decks consistent.
  */
 
-export const SlideCtx = createContext<SlideContext>({ step: 0, index: 0, count: 1, active: true, thumbnail: false });
+export const SlideCtx = createContext<SlideContext>({ lang: 'en', step: 0, index: 0, count: 1, active: true, thumbnail: false });
 export const useSlide = () => useContext(SlideCtx);
 
 /**
@@ -38,10 +38,11 @@ export function Frame({ kicker, title, children, align = 'start' }: { kicker?: s
 }
 
 /** Opening/closing slide: large wordmark-style title. */
-export function Cover({ title, subtitle, meta }: { title: ReactNode; subtitle?: ReactNode; meta?: ReactNode }) {
+export function Cover({ title, subtitle, meta, phrase = false }: { title: ReactNode; subtitle?: ReactNode; meta?: ReactNode; phrase?: boolean }) {
   return (
     <div className="pz-cover">
-      <h1 className="pz-cover-title">{title}</h1>
+      {/* `phrase`: a few words rather than a wordmark, so normal letter spacing on one line. */}
+      <h1 className={`pz-cover-title${phrase ? ' is-phrase' : ''}`}>{title}</h1>
       <span className="pz-rule" aria-hidden="true" />
       {subtitle && <p className="pz-cover-sub">{subtitle}</p>}
       {meta && <p className="pz-cover-meta">{meta}</p>}
@@ -49,10 +50,10 @@ export function Cover({ title, subtitle, meta }: { title: ReactNode; subtitle?: 
   );
 }
 
-/** Bullet list where item i (0-based) appears at build step `from + i`. Pass `from={0}` for no builds. */
-export function Points({ items, from = 1 }: { items: ReactNode[]; from?: number }) {
+/** Bullet list where item i (0-based) appears at build step `from + i`. Pass `from={0}` for no builds; `numbered` shows 1. 2. 3. instead of dashes. */
+export function Points({ items, from = 1, numbered = false }: { items: ReactNode[]; from?: number; numbered?: boolean }) {
   return (
-    <ul className="pz-points">
+    <ul className={`pz-points${numbered ? ' numbered' : ''}`}>
       {items.map((it, i) =>
         from > 0 ? (
           <Step key={i} as="li" at={from + i}>
@@ -83,6 +84,73 @@ export function Figure({ value, unit, label }: { value: ReactNode; unit?: string
         {unit && <span className="pz-figure-unit">{unit}</span>}
       </p>
       <p className="pz-figure-label">{label}</p>
+    </div>
+  );
+}
+
+export interface CompareSide {
+  /** The headline number or word for this side. */
+  figure: ReactNode;
+  text: ReactNode;
+}
+export interface CompareRow {
+  label: ReactNode;
+  left: CompareSide;
+  right: CompareSide;
+}
+
+/**
+ * Side-by-side comparison table. Row i appears at build step i + 1 (pass `from={0}` for no builds).
+ * The right-hand column is the highlighted one (green tint), the left is neutral.
+ */
+export function Compare({ leftTitle, rightTitle, rows, sources, from = 1, dense = false }: { leftTitle: ReactNode; rightTitle: ReactNode; rows: CompareRow[]; sources?: ReactNode[]; from?: number; dense?: boolean }) {
+  // `dense`: smaller type and tighter cells, for languages that run longer than English.
+  return (
+    <div className={`pz-compare${dense ? ' dense' : ''}`}>
+      <div className="pz-compare-grid" role="table">
+        <div className="pz-compare-head" role="row">
+          <span role="columnheader" />
+          <span role="columnheader" className="pz-compare-col">
+            {leftTitle}
+          </span>
+          <span role="columnheader" className="pz-compare-col is-pick">
+            {rightTitle}
+          </span>
+        </div>
+        {rows.map((r, i) => {
+          const body = (
+            <>
+              <span role="rowheader" className="pz-compare-label">
+                {r.label}
+              </span>
+              <div role="cell" className="pz-compare-cell">
+                <p className="pz-compare-fig">{r.left.figure}</p>
+                <p className="pz-compare-text">{r.left.text}</p>
+              </div>
+              <div role="cell" className="pz-compare-cell is-pick">
+                <p className="pz-compare-fig">{r.right.figure}</p>
+                <p className="pz-compare-text">{r.right.text}</p>
+              </div>
+            </>
+          );
+          return from > 0 ? (
+            <Step key={i} at={from + i} className="pz-compare-row">
+              {body}
+            </Step>
+          ) : (
+            <div key={i} className="pz-compare-row" role="row">
+              {body}
+            </div>
+          );
+        })}
+      </div>
+      {sources && sources.length > 0 && (
+        <ol className="pz-sources">
+          {sources.map((s, i) => (
+            <li key={i}>{s}</li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }

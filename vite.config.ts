@@ -2,6 +2,8 @@ import { defineConfig } from 'vitest/config';
 import type { Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 /**
  * Dev server only: stop React's development build from calling `console.createTask` for every
  * element. That call links async stack traces in DevTools and costs more than the whole render
@@ -25,7 +27,7 @@ function fastDevReact(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [fastDevReact(), react()],
+  plugins: [fastDevReact(), react(), cloudflare()],
   worker: { format: 'es' },
   test: { environment: 'node', include: ['tests/**/*.test.ts'] },
 });

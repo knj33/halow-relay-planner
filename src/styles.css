@@ -21,8 +21,8 @@
   --bad-text: #f19a8e;
   --accent: var(--salmon);
   --accent-ink: #1a110c;
-  --display: 'Jost', 'Segoe UI', system-ui, sans-serif;
-  --mono: 'IBM Plex Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+  --display: 'Jost', 'Noto Sans Georgian', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', 'Noto Sans Georgian', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
   color-scheme: dark;
 }
 
@@ -378,6 +378,45 @@ button.ghost {
   overflow: hidden;
   background: radial-gradient(ellipse at 50% 50%, #241813 0%, var(--ground) 72%);
 }
+/* Live presentation slide: the map is the whole screen and fits it exactly. The slide caption
+   tells the story, so the planner's notices, banners, hints and long explanations stay hidden. */
+.app.is-live > :not(.map-frame):not(.pz-root) {
+  display: none;
+}
+.app.is-live .map-frame {
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  height: 100vh;
+  max-height: none;
+  border: 0;
+}
+/* Keep the map's control bar in the left side column, clear of the square map. */
+.app.is-live .survey-bar {
+  max-width: max(260px, calc((100vw - 100vh) / 2 - 48px));
+}
+.app.is-live .sim-banner,
+.app.is-live .map-status,
+.app.is-live .map-info .why,
+.app.is-live .map-info .empty-hint,
+.app.is-live .map-info .warn-text,
+.app.is-live .globe-credit,
+.app.is-live .survey-key-wrap {
+  display: none;
+}
+
+/* Full screen: the map is the whole screen, edge to edge. */
+.map-frame:fullscreen {
+  margin: 0;
+  width: 100vw;
+  height: 100vh;
+  max-height: none;
+  border: 0;
+  background: var(--ground);
+}
+.map-frame::backdrop {
+  background: var(--ground);
+}
 .globe-layer {
   position: absolute;
   inset: 0;
@@ -409,15 +448,6 @@ button.ghost {
 .survey-pulses {
   pointer-events: none;
   will-change: transform;
-}
-/* Edge vignette as a static overlay; a CSS mask on the raster was recomposited on every frame. */
-.survey::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background: radial-gradient(farthest-side at 50% 50%, transparent 78%, rgba(22, 17, 14, 0.55) 100%);
 }
 .survey-vector {
   cursor: grab;
@@ -2049,6 +2079,38 @@ details.sub > * + * {
   stroke-dasharray: 1;
   animation: sv-draw 1.8s ease-in-out both;
 }
+/* Dead remainder of the old routes: spreads out from the failed node in red. */
+.sv-dead-under {
+  stroke-dasharray: 1;
+  animation: sv-draw 0.8s ease-out both;
+}
+.sv-dead-core {
+  animation: sv-reveal 0.5s ease-out 0.2s both;
+}
+.sv-dead.settled {
+  opacity: 0.85;
+}
+.sv-dead.settled path {
+  animation: none;
+}
+/* Newly chosen route: draws in green, then the glow breathes a few times and stays. */
+@keyframes sv-glow {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.3;
+  }
+}
+.sv-chosen path {
+  stroke-dasharray: 1;
+  animation: sv-draw 1.8s ease-in-out both;
+}
+.sv-chosen .sv-chosen-glow {
+  animation:
+    sv-draw 1.8s ease-in-out both,
+    sv-glow 0.9s ease-in-out 1.8s 4 alternate;
+}
 
 .sim-controls {
   display: flex;
@@ -2189,6 +2251,8 @@ details.sub > * + * {
 .app:not(.motion-on) .sv-ghost,
 .app:not(.motion-on) .sv-reveal,
 .app:not(.motion-on) .sv-draw path,
+.app:not(.motion-on) .sv-dead path,
+.app:not(.motion-on) .sv-chosen path,
 .app:not(.motion-on) .sim-banner .sim-dot {
   animation: none;
 }

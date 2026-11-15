@@ -18,6 +18,8 @@ import {
   areaLimitsFor,
   analyzeNetwork,
   evaluateNetwork,
+  maxFreeSpaceRangeM,
+  servingNodeIds,
   exportDeployment,
   gridToGeo,
   heightsOf,
@@ -221,6 +223,12 @@ export function App() {
   );
   const net = useMemo(() => analyzeNetwork(engineNodes, links), [engineNodes, links]);
   const shownLinks = useMemo(() => displayLinks(links, engineNodes, radio), [links, engineNodes, radio]);
+  // Crew coverage counts only nodes still connected to A or a base station: after a failure, a relay
+  // that is cut off still transmits but relays nothing, so the crew route must not lean on it.
+  const servingNodes = useMemo(() => {
+    const ids = servingNodeIds(engineNodes, links);
+    return engineNodes.filter((n) => ids.has(n.id));
+  }, [engineNodes, links]);
 
   // Survey layers depend only on the grid; the walking route follows the radio route (or A to B).
   const layers = useMemo(() => (gridReady && terrain ? surveyLayers(terrain, { sourceResolutionM: terrainMeta?.resolutionM }) : null), [gridReady, terrain, terrainMeta]);
@@ -255,7 +263,7 @@ export function App() {
         env,
         radio,
         heights,
-        nodes: engineNodes,
+        nodes: servingNodes,
         clientHeightM: cost.clientHeightM,
         stops,
         zones: zonesGrid.map((z) => z.pts),
@@ -276,7 +284,7 @@ export function App() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [gridReady, terrain, terrainArea, terrainMeta, inputsValid, safetyOk, engineNodes, wpGrid, zonesGrid, env, radio, heights, cost.clientHeightM, s.safety]);
+  }, [gridReady, terrain, terrainArea, terrainMeta, inputsValid, safetyOk, engineNodes, servingNodes, wpGrid, zonesGrid, env, radio, heights, cost.clientHeightM, s.safety]);
   const walk = trav?.result ?? null;
   // Why this path: measured against the same grid, hazard and coverage maps the search used.
   const why = useMemo(() => {
@@ -284,6 +292,19 @@ export function App() {
     const e = explainTraverse(terrain, trav.layer.hazards, trav.layer.coverage, trav.stops, trav.result, trav.safety);
     return whyThisPath(e, trav.safety, { areaKm: Math.round(area.sizeM / 1000), zones: s.zones.length });
   }, [trav, terrain, area, s.zones.length]);
+
+  // Full screen for the map frame (survey, 3D relief and globe alike): the map takes the whole screen.
+  const mapFrameRef = useRef<HTMLElement>(null);
+  const [mapFull, setMapFull] = useState(false);
+  useEffect(() => {
+    const on = () => setMapFull(!!mapFrameRef.current && document.fullscreenElement === mapFrameRef.current);
+    document.addEventListener('fullscreenchange', on);
+    return () => document.removeEventListener('fullscreenchange', on);
+  }, []);
+  const toggleMapFull = () => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    else void mapFrameRef.current?.requestFullscreen?.().catch(() => {});
+  };
 
   // Failure simulation: a node goes dark (or comes back), then the radio route and the crew route re-plan.
   const [sim, setSim] = useState<Sim | null>(null);
@@ -315,7 +336,37 @@ export function App() {
     }
     const seq = ++simSeq.current;
     const kind = n.enabled ? 'fail' : 'restore';
-    setSim({ seq, nodeId: id, label: labels.get(id) ?? id, kind, phase: 'failing', ghostRoute: routePts(net.route), ghostWalk: walk?.points ?? null, before: statsNow(), after: null });
+    // Where the old routes stop being usable: the radio route from the failed node on, and the crew
+    // route from its closest approach to that node (if the node was on the radio route or in radio
+    // range of the walk, so the crew could have depended on it).
+    const routeCut = kind === 'fail' ? net.route.indexOf(id) : -1;
+    let walkCut = -1;
+    const at = engineNodes.find((x) => x.id === id);
+    if (kind === 'fail' && at && walk && walk.points.length > 1) {
+      let best = Infinity;
+      walk.points.forEach((p, i) => {
+        const d = Math.hypot(p.x - at.x, p.y - at.y);
+        if (d < best) {
+          best = d;
+          walkCut = i;
+        }
+      });
+      if (routeCut < 0 && !(best <= maxFreeSpaceRangeM(radio))) walkCut = -1;
+      if (walkCut >= walk.points.length - 1) walkCut = -1;
+    }
+    setSim({
+      seq,
+      nodeId: id,
+      label: labels.get(id) ?? id,
+      kind,
+      phase: 'failing',
+      ghostRoute: routePts(net.route),
+      ghostWalk: walk?.points ?? null,
+      routeCut,
+      walkCut,
+      before: statsNow(),
+      after: null,
+    });
     window.setTimeout(
       () => {
         useStore.getState().updateNode(id, { enabled: kind === 'restore' });
@@ -498,12 +549,38 @@ export function App() {
   // What slides may do to the planner. The ref always holds this render's closures, so a slide
   // acting later (after a failure re-plans the route, say) sees the current network.
   const bridgeImpl = useRef<PresentationBridge | null>(null);
+  // Presentation showcase for the 3D relief: hill height and a one-time orbit (see Survey3D).
+  const [relief, setRelief] = useState({ seq: 0, exag: 3 });
+  // The grid the presentation's demo load installed, and the load in flight: while the store
+  // still holds that grid the demo is loaded, so ensureDemo does nothing and nothing reloads.
+  const demoGrid = useRef<unknown>(null);
+  const demoLoading = useRef<Promise<void> | null>(null);
   bridgeImpl.current = {
     loadPremadeDemo: async () => {
       await useStore.getState().loadPremadeDemo();
       setView('survey');
     },
+    ensureDemo: async () => {
+      const st = useStore.getState();
+      const loaded = demoGrid.current !== null && st.terrain === demoGrid.current && st.terrainStatus === 'ready';
+      if (!loaded) {
+        demoLoading.current ??= st.loadPremadeDemo().then(() => {
+          demoGrid.current = useStore.getState().terrain;
+        });
+        try {
+          await demoLoading.current;
+        } finally {
+          demoLoading.current = null;
+        }
+      }
+      // Mounting the survey map starts its detail cache, even under a covering stage slide.
+      setView('survey');
+    },
     setView: (v) => (v === 'globe' ? setView('globe') : openSurvey(v)),
+    showRelief: (exaggeration) => {
+      openSurvey('3d');
+      setRelief((p) => ({ seq: p.seq + 1, exag: Math.min(12, Math.max(1, Math.round(exaggeration))) }));
+    },
     planRelays: onPlan,
     randomFailure,
     restoreAll,
@@ -512,7 +589,9 @@ export function App() {
     () =>
       registerBridge({
         loadPremadeDemo: () => bridgeImpl.current!.loadPremadeDemo(),
+        ensureDemo: () => bridgeImpl.current!.ensureDemo(),
         setView: (v) => bridgeImpl.current!.setView(v),
+        showRelief: (e) => bridgeImpl.current!.showRelief(e),
         planRelays: () => bridgeImpl.current!.planRelays(),
         randomFailure: () => bridgeImpl.current!.randomFailure(),
         restoreAll: () => bridgeImpl.current!.restoreAll(),
@@ -521,7 +600,7 @@ export function App() {
   );
 
   return (
-    <div className={`app${motion ? ' motion-on' : ''}${presenting ? ' is-presenting' : ''}${presenting && !presentingLive ? ' is-covered' : ''}`} data-body={body}>
+    <div className={`app${motion ? ' motion-on' : ''}${presenting ? ' is-presenting' : ''}${presenting && !presentingLive ? ' is-covered' : ''}${presenting && presentingLive ? ' is-live' : ''}`} data-body={body}>
       <span className="guide-line left" aria-hidden="true" />
       <span className="guide-line right" aria-hidden="true" />
 
@@ -593,7 +672,7 @@ export function App() {
 
       <EnginePrompt />
 
-      <section className="map-frame" aria-label="Map">
+      <section ref={mapFrameRef} className="map-frame" aria-label="Map">
         <div className={`globe-layer${view === 'globe' ? '' : ' is-hidden'}`} aria-hidden={view !== 'globe'}>
           <GlobeView
             active={view === 'globe' && appVisible}
@@ -662,6 +741,9 @@ export function App() {
             heights={heights}
             selectedId={s.selectedId}
             onNodeClick={onNodeClick3D}
+            safetyLayer={trav?.layer ?? null}
+            sim={sim}
+            showcase={relief}
           />
         )}
         {view !== 'globe' && !gridReady && s.terrainStatus !== 'loading' && s.terrainStatus !== 'error' && (
@@ -725,6 +807,10 @@ export function App() {
               }}
             >
               Demo
+            </button>
+            <span className="view-sep" aria-hidden="true" />
+            <button type="button" className="cap-link" aria-pressed={mapFull} onClick={toggleMapFull} title={mapFull ? 'Leave full screen (Esc)' : 'Show the map on the whole screen'}>
+              {mapFull ? 'Exit full screen' : 'Full screen'}
             </button>
           </div>
           {area && <span className="cap bright">Planning area {(area.sizeM / 1000).toFixed(0)} km</span>}

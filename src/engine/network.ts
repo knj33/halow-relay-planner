@@ -67,6 +67,27 @@ export function evaluateNetwork(
 
 const usable = (l: NetworkLink) => l.result.status !== 'fail';
 
+/**
+ * Enabled nodes that still connect to home: endpoint A or any enabled base station (which carries the
+ * satellite uplink), over usable links. A relay cut off by a failure still transmits, but a crew radio
+ * that can reach only that relay reaches nobody, so crew coverage must count only these nodes.
+ */
+export function servingNodeIds(nodes: SiteNode[], links: NetworkLink[]): Set<string> {
+  const active = nodes.filter((n) => n.enabled);
+  const index = new Map(active.map((n, i) => [n.id, i]));
+  const adj = buildAdjacency(
+    active.length,
+    links.filter((l) => usable(l) && index.has(l.a) && index.has(l.b)).map((l) => ({ i: index.get(l.a)!, j: index.get(l.b)!, margin: l.result.marginDb })),
+  );
+  const out = new Set<string>();
+  active.forEach((n, i) => {
+    if (n.kind !== 'A' && n.kind !== 'base') return;
+    if (out.has(n.id)) return;
+    reachableFrom(adj, i).forEach((r, j) => r && out.add(active[j].id));
+  });
+  return out;
+}
+
 export function analyzeNetwork(nodes: SiteNode[], links: NetworkLink[]): NetworkAnalysis {
   const active = nodes.filter((n) => n.enabled);
   const index = new Map(active.map((n, i) => [n.id, i]));

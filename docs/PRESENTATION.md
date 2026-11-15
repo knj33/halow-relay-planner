@@ -139,7 +139,82 @@ Going back onto a slide shows it fully built, as Keynote and PowerPoint do.
 | `Step` | A fragment (see above). |
 | `Columns` | Two or more columns, `ratio` is a CSS grid template (`'1.2fr 1fr'`). |
 | `Figure` | One big number with a unit and a label. |
+| `Compare` | Side-by-side table: a label column, a neutral left column and a highlighted right column (green tint), each cell a big figure plus a sentence. Row i builds in at step i + 1; `sources` renders a numbered source list under it (cite with `<sup>n</sup>`). Used by the "Relay satellite or surface mesh?" slide in `sample.tsx`. |
 | `Caption` | The caption card for live slides. |
+
+**Decks.** `decks/smms.tsx` is the default (the SMMS talk: title, problem, mesh example,
+satellite vs mesh, hardware, SSA Mesh Oriented OS, live demo, thanks); `decks/sample.tsx` is the
+engine sample, at `#/present/sample`. The hardware slide lives in `decks/hardware.tsx` and both
+decks use it. The OS slide shows `public/present/ssa-os.png`, a crop of the team's QEMU/KVM
+screenshot of SSA Space 0.1. The demo slide has three builds: the network, a relay failure, then
+the 3D relief via `bridge.showRelief(10)`, which sets the vertical exaggeration and flies the
+camera once around the area (`showcase` prop on `Survey3D`, `SHOWCASE_ORBIT_S`). Network drawings on slides use `decks/MapArt.tsx`, the survey
+map's drawing language at stage scale (relay and endpoint glyphs, link styles, route corridor,
+glowing signal packets, dashed area frame): `MeshArtHealthy` (green, slide 1), `MeshArtCut`
+(red, "DISCONNECTED", slide 2) and `MeshHeal` all build on it, so keep it in step with
+`components/SurveyMap.tsx` if the map's look changes. `Compare dense` tightens the table for
+Georgian, which runs longer than English. The thank-you mascot is `public/present/kerbal.png`
+(background cut out of the supplied clipart, watermark corner cleared). `Points numbered` shows 1. 2. 3. instead of dashes; `Cover phrase`
+sets a few words (not a wordmark) on one line with normal letter spacing.
+
+**Languages.** A deck's `langs` lists the languages it is written in (first = default); with two
+or more, a faint toggle at the top of the screen switches between them, and the choice is kept in
+`localStorage` (`halow.present.lang`). Slides read the language from their context (`render({ lang })`
+or `useSlide().lang`); a slide's own `langs` limits it to some languages, and the slide list (and
+numbering) is filtered per language. A deck's `notice` puts a faint note in the bottom-right
+corner per language. SMMS: Georgian (default) and English; English shows slides 1–7 without the
+thank-you and carries "Includes AI-generated content". The position is clamped during render, so
+switching language on a slide that does not exist in the other language lands on the last one.
+
+**Preloading and autoplay.** A deck's `onOpen(app)` runs once when the deck opens, whatever slide
+it opens at. The SMMS deck calls `app.ensureDemo()` there (after 1.2 s, so the opening transition
+stays smooth): the bundled demo loads and the survey map mounts under the title slide, which also
+builds its detail cache, so the live demo slide opens with no loading screen. `ensureDemo` is a
+no-op while the grid it loaded is still in the store, and shares one in-flight load. A slide's
+`autoAdvanceMs` steps it on by itself after that long without navigation (any navigation restarts
+the wait; it never leaves the slide; paused in the overview and while blanked): the SMMS demo
+fails a relay after 20 s if nobody presses Next.
+
+`decks/HardwareShowcase.tsx` shows the two PCBs as real 3D models, each turning on its own
+turntable (one r3f canvas per board, `frameloop` `'always'` only on the current slide, a still
+placeholder in thumbnails, `resize={{ offsetSize: true }}` because the stage is CSS-scaled). The
+models in `public/hw/` are generated, not hand-made. To regenerate after a board changes:
+
+1. The boards reference part models through `${KICAD6..10_3DMODEL_DIR}`, which kicad-cli does not
+   resolve and the KiCad 10 library ships as STEP only. Copy each `.kicad_pcb` to a scratch folder
+   with those paths rewritten to `C:/Program Files/KiCad/10.0/share/kicad/3dmodels/...` and
+   `.wrl` → `.step` where the STEP exists.
+2. Export: `kicad-cli pcb export glb --force --include-silkscreen --include-soldermask [--include-tracks --include-pads] -o out.glb board.kicad_pcb`.
+   The relay node keeps tracks and pads (its traces show). The base station is exported without
+   them: with them the raw file is 166 MB, and its outer traces barely show under the mask.
+3. Base station only: colour the parts by type on a dark board, so its 818 parts read at slide
+   scale: `node scripts/recolor-pcb-glb.mjs out.glb out-color.glb` (needs `@gltf-transform/core`
+   and `@gltf-transform/extensions` 4.1.1 installed where you run it; they are not project
+   dependencies). This has to happen before step 4, which merges every part into a few meshes
+   with a palette texture, so nothing per-part is left to recolour at runtime.
+4. Compress: `npx @gltf-transform/cli@4.1.1 optimize out.glb public/hw/<name>.glb --compress meshopt --texture-compress false --simplify-error 0.0005`
+   (relay node 12.7 MB → 0.53 MB, base station 18.8 MB → 0.53 MB). `useGLTF(url, false, true)`
+   decodes meshopt locally; Draco stays off because drei would fetch its decoder from a CDN.
+
+The enclosures, solar panels and antennas are drawn by the slide (`BoardDressing`), not exported.
+`shell: true` puts the board in a simple box (see-through walls and floor with light edges, 7 %
+clearance) whose lid is a solar panel. A loop in `Board` (`CYCLE`: 3 s closed, 1.6 s opening,
+3.6 s open, 1.6 s closing) shows both: open, the lid rises and fades to a ghost, the walls clear
+and the view tilts down onto the PCB. The clock only advances on rendered frames, so every visit
+to the slide starts closed. Antennas sit at the antenna connectors' exported positions
+and leave the box: base station J32 `HALOW_A` and J33 `HALOW_B` (edge-mount SMA) through the nearest
+side wall as hinged rubber ducks; relay node J7 (u.FL) as an 86 mm whip (a quarter wave at
+868 MHz) standing on the lid above it. If a connector moves on the board, update its position in
+`sample.tsx` (read it from the un-optimised GLB, where nodes are still named by reference designator).
+
+Sources: relay node `nodepcb/LunarLink-Relay-Node.kicad_pcb`; base station
+`Documents/NASA/packet/Lunar_Base_Station/kicad/lunar_base.kicad_pcb` (outside this repo).
+
+`decks/MeshHeal.tsx` is an example of an animated stage slide driven by build steps: step 0 signal
+pulses flow A→B, step 1 a relay goes dark (route past it red, B loses signal), step 2 a standby relay
+wakes and the new route draws in green. Pulses are SMIL `animateMotion` and run only on the current
+slide (`useSlide().active`, never in thumbnails); everything else animates opacity, transform or
+`stroke-dashoffset` on a few small shapes, and stops with the planner's Motion setting off.
 
 Styles are the `.pz-*` rules in `src/present/present.css`, built on the planner's design tokens
 (`--salmon`, `--traverse`, `--display`, `--mono`, ...), so slides match the app. Plain JSX

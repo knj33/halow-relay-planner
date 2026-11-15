@@ -14,7 +14,12 @@ export type SlideKind = 'stage' | 'live';
 /** Transition into this slide. Only opacity and transform animate, so every transition runs on the compositor. */
 export type Transition = 'fade' | 'slide' | 'rise' | 'none';
 
+/** Presentation language. A deck that lists more than one in `langs` gets a language toggle. */
+export type Lang = 'ka' | 'en';
+
 export interface SlideContext {
+  /** Language the deck is being shown in. */
+  lang: Lang;
   /** Build step currently shown, 0..steps. */
   step: number;
   /** Zero-based slide index. */
@@ -30,6 +35,8 @@ export interface SlideContext {
 export interface SlideDef {
   /** Stable id, unique in the deck. Used for React keys and to find a slide from code. */
   id: string;
+  /** Show this slide only in these languages (default: all). */
+  langs?: Lang[];
   /** Short title for the overview, the speaker view and the document title. */
   title: string;
   kind?: SlideKind;
@@ -54,6 +61,11 @@ export interface SlideDef {
   onStep?: (app: PresentationBridge, step: number, ctx: SlideContext) => void;
   /** Called when another slide becomes current. */
   onLeave?: (app: PresentationBridge) => void;
+  /**
+   * Autoplay: while this slide is current and has build steps left, advance one step after this
+   * many milliseconds without navigation. Any navigation restarts the wait; it never leaves the slide.
+   */
+  autoAdvanceMs?: number;
 }
 
 export interface Deck {
@@ -66,4 +78,10 @@ export interface Deck {
   /** Backdrop colour behind stage slides. */
   background?: string;
   slides: SlideDef[];
+  /** Languages the deck is written in, first = default. Two or more show a language toggle. */
+  langs?: Lang[];
+  /** A faint note in the bottom-right corner, per language (none where absent). */
+  notice?: Partial<Record<Lang, string>>;
+  /** Called once when the deck opens, whatever slide it opens at. Use it to preload live slides. */
+  onOpen?: (app: PresentationBridge) => void | Promise<void>;
 }
