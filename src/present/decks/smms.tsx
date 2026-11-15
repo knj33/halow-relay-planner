@@ -104,14 +104,14 @@ export const smmsDeck: Deck = {
               {
                 label: t(lang, 'კავშირის დრო', 'Contact time'),
                 left: {
-                  figure: t(lang, 'დღეში 2–4-ჯერ', '2–4 times a day'),
+                  figure: t(lang, 'დღეში 2–4 ფანჯარა', '2–4 windows a day'),
                   text: t(
                     lang,
                     <>
-                      თითო თანამგზავრი ადგილს თავზე დღეში მხოლოდ 2–4-ჯერ გადაუვლის<sup>2</sup>. კავშირი მხოლოდ მაშინაა, სანამ ჰორიზონტს ზემოთაა, და კრატერის კედლები და ქედები ამ დროს კიდევ ამოკლებს.
+                      ერთი სატელიტი დღეში მაქსიმუმ 4-ჯერ გადაუვლის იგივე ადგილს<sup>2</sup>.
                     </>,
                     <>
-                      Each orbiter passes over a site only 2–4 times a day<sup>2</sup>. There is a link only while it is above the horizon, and crater walls and ridges cut that time further.
+                      One satellite passes over the same spot at most 4 times a day<sup>2</sup>.
                     </>,
                   ),
                 },
@@ -121,18 +121,10 @@ export const smmsDeck: Deck = {
                 },
               },
               {
-                label: t(lang, 'საიმედოობა', 'Reliability'),
+                label: t(lang, 'მდგრადობა', 'Resilience'),
                 left: {
-                  figure: t(lang, 'ძველი ფლოტი', 'Aging fleet'),
-                  text: t(
-                    lang,
-                    <>
-                      რამდენიმე ძველი სამეცნიერო თანამგზავრი, რომლისთვისაც რელე მეორადი ფუნქციაა<sup>3</sup>; ფლოტი „მყიფე და დაბერებულია“<sup>4</sup>. თუ ერთი გაჩერდა, ჩანაცვლება არაა: MAVEN 2026 წლის ივნისში დაიკარგა<sup>2</sup>.
-                    </>,
-                    <>
-                      A few old science orbiters that relay as a second job<sup>3</sup>, in a fleet called “fragile and aging”<sup>4</sup>. When one stops there is no replacement: MAVEN was lost in June 2026<sup>2</sup>.
-                    </>,
-                  ),
+                  figure: t(lang, 'მხოლოდ 1 სატელიტი', 'Only 1 satellite'),
+                  text: t(lang, 'თუ ეს სატელიტი დაეცა, მაშინვე ვკარგავ ასტრონავტთან კონტაქტს.', 'If that satellite goes down, we lose contact with the astronaut at once.'),
                 },
                 right: {
                   figure: t(lang, 'ბევრი მარშრუტი', 'Many routes'),
