@@ -51,7 +51,7 @@ export const smmsDeck: Deck = {
           <Frame title={t(lang, 'პრობლემა', 'The problem')}>
             <Points
               numbered
-              items={t(lang, ['A - დან B მდე მისვლა უსაფრთხოდ', 'ოპტიმალურად', 'საკომუნიკაციო არხის არ ქონდა'], ['Getting from A to B safely', 'Optimally', 'Not having a communication channel'])}
+              items={t(lang, ['A - დან B მდე მისვლა უსაფრთხოდ', 'ოპტიმალურად', 'საკომუნიკაციო არხის არ ქონა'], ['Getting from A to B safely', 'Optimally', 'Not having a communication channel'])}
             />
           </Frame>
           <MeshArtCut />
