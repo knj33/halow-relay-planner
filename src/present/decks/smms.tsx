@@ -58,6 +58,19 @@ export const smmsDeck: Deck = {
         </>
       ),
     },
+    {
+      id: 'mesh-example',
+      title: 'Mesh System Example',
+      steps: 2,
+      transition: 'fade',
+      notes:
+        'Animated, two builds. Start: signal pulses flow A to B hop by hop. Next: an access point on the route goes dark, the route past it turns red and B reports no signal. Next: a standby relay wakes, fills the gap, the new route draws in green and the pulses reach B again.',
+      render: () => (
+        <Frame title="Mesh System Example">
+          <MeshHeal />
+        </Frame>
+      ),
+    },
     hardwareSlide,
     {
       id: 'os',
@@ -87,19 +100,6 @@ export const smmsDeck: Deck = {
               </li>
             </ul>
           </div>
-        </Frame>
-      ),
-    },
-    {
-      id: 'mesh-example',
-      title: 'Mesh System Example',
-      steps: 2,
-      transition: 'fade',
-      notes:
-        'Animated, two builds. Start: signal pulses flow A to B hop by hop. Next: an access point on the route goes dark, the route past it turns red and B reports no signal. Next: a standby relay wakes, fills the gap, the new route draws in green and the pulses reach B again.',
-      render: () => (
-        <Frame title="Mesh System Example">
-          <MeshHeal />
         </Frame>
       ),
     },
