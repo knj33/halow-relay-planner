@@ -11,6 +11,7 @@ import {
   gridPointsFor,
   gridToGeo,
   maxAreaM,
+  VISIBLE_BODIES,
 } from '../engine';
 import type {
   BackhaulSettings,
@@ -229,7 +230,7 @@ export const sameArea =(a: PlanningArea | null, b: PlanningArea | null) =>
 const clampLat = (lat: number) => Math.max(-84, Math.min(84, lat));
 
 export const useStore = create<State>((set, get) => ({
-  ...freshEnvironment('earth'),
+  ...freshEnvironment(VISIBLE_BODIES[0]),
   radio: { ...EXAMPLE_HALOW_PROFILE },
   planner: { ...DEFAULT_PLANNER },
   safety: { ...CONSERVATIVE_SAFETY },

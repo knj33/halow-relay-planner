@@ -10,6 +10,8 @@ There is no backend, no accounts, no API keys. Everything is computed client-sid
 
 The Moon is the motivating case (no atmosphere, small radius so the horizon is close, extreme delivery cost per kg); Mars follows exactly the same code paths as the Moon (global USGS mosaic + bundled fallback, smooth imagery globe + relief patch, k locked to 1); Earth exists as a like-for-like reference.
 
+**The UI is Mars-only for now.** `VISIBLE_BODIES` (`engine/types.ts`) is `['mars']`: the store starts on Mars, the masthead body switch is hidden while it has one entry, and importing an Earth or Moon file is rejected. Earth and Moon code, data and tests are kept; adding them back to `VISIBLE_BODIES` restores everything.
+
 **Adding or changing a body** touches: `BodyId`/`BODY_IDS` (`engine/types.ts`), `BODIES` (`bodies.ts`), `AREA_LIMITS`/`NATIVE_AREA_LIMITS` (`area.ts`), `defaultCostModel`, `defaultSatellites`, `modelAssumptions`, the synthetic registry (`engine/terrain/index.ts`), `MOSAIC_TERRAIN` (`src/terrain/sources.ts`), `GLOBE_SOURCES`/`BASE_TEXTURE` (`scene/GlobeView.tsx`), `PRESETS`/`DEMO_*` (`presets.ts`), `PRESET_VIEW_M` (store), the `[data-body]` accent in `styles.css`, and the C helper (`MOON_MOSAICS`/`MARS_MOSAICS`, request limits, `/health` `bodies`). Most of these are `Record<BodyId, …>`, so `tsc` lists what is missing.
 
 ## Commands
@@ -62,6 +64,10 @@ make -C native test       # deterministic regression tests, no network
 **Backhaul** (`backhaul.ts`): satellites are a fixed illustrative snapshot, not an ephemeris. Their sub-satellite points are `x, y` in the *planning area's local frame* (so they are relative to wherever the area is). A base station picks the closest satellite whose elevation clears the terrain skyline in that azimuth plus `minElevationDeg`. Geometry only; no satellite link budget.
 
 **Comparison** (`compare.ts`, `analyzeScenario`): four strategies evaluated on the same grid, radio and cost placeholders: `mesh` (this plan), `direct` (same radios, relays removed), `towers` (tall masts re-planned with the same heuristic), `satellite` (a terminal per user, coverage = sky visibility). Coverage (`coverage.ts`) is the share of cells from which a client radio at `clientHeightM` can close a link, by the same `evaluateLink`, to any node in A's connected component. Cost (`cost.ts`) is `hardware + install + mass × deliveryUsdPerKg`; lunar defaults are dominated by delivery at $1M/kg.
+
+**The comparison is not shown in the UI** (team decision): no strategy cards, no coverage overlay on the map, no coverage figure in the plan readout, and the comparison-only cost inputs (`COMPARISON_ONLY`: masts, per-user terminals, coverage target) are hidden. `analyzeScenario` still runs in the worker because the plan readout takes each base station's chosen satellite from it.
+
+The **Costs** tab (`components/CostsPage.tsx`) holds everything financial: the bundled Arcadia demo priced line by line from its manifest (no elevation fetch) against the budget (Mars default US$1 billion, the team's budget), a table of each Mars default's basis (`MARS_COST_BASIS`: sourced / derived / team estimate) with numbered references (`COST_SOURCES`), and the cost inputs. Mars delivery is `MARS_LANDED_USD_PER_KG` (Mars 2020: $2.7B ÷ 1,025 kg); if you change a Mars cost default, update its basis entry and sources too.
 
 Every number in `radio.ts`, `cost.ts` and the satellite list is an explicitly illustrative placeholder. `assumptions.ts` is the user-facing statement of what is and is not modelled; it is rendered in the UI **and embedded in every export**, so when the model changes, update it too.
 

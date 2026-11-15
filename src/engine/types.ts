@@ -4,6 +4,11 @@ export type BodyId = 'earth' | 'moon' | 'mars';
 
 /** Every body, in the order the body switch shows them. */
 export const BODY_IDS: readonly BodyId[] = ['earth', 'moon', 'mars'];
+/**
+ * Bodies offered in the UI. Earth and the Moon are hidden, not removed: their code paths, tests and
+ * data stay intact, so adding them back here restores the body switch.
+ */
+export const VISIBLE_BODIES: readonly BodyId[] = ['mars'];
 
 export interface Body {
   id: BodyId;

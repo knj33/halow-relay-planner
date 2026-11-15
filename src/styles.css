@@ -1343,6 +1343,117 @@ details.sub > * + * {
   border-color: rgba(228, 106, 90, 0.6);
 }
 
+/* Costs page */
+.costs-page {
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+}
+.costs-page > section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.costs-page .body {
+  max-width: 80ch;
+  color: var(--muted);
+}
+.costs-page h3.cap {
+  margin-top: 8px;
+}
+.cost-headline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.cost-headline > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  border-right: 1px solid var(--line);
+}
+.cost-headline > div:last-child {
+  border-right: 0;
+}
+.cost-headline strong {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--text);
+}
+.cost-headline strong.bad-text {
+  color: var(--bad-text);
+}
+.cost-table-wrap {
+  overflow-x: auto;
+}
+.cost-table td.num,
+.cost-table tfoot td {
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+.cost-table tfoot th,
+.cost-table tfoot td {
+  border-bottom: 0;
+  border-top: 1px solid var(--line-strong);
+  color: var(--text);
+  font-weight: 500;
+}
+.basis-table td:last-child {
+  color: var(--muted);
+  line-height: 1.55;
+  min-width: 32ch;
+}
+.basis {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.basis-sourced {
+  border-color: rgba(167, 199, 143, 0.6);
+  color: var(--ok);
+}
+.basis-derived {
+  border-color: rgba(169, 196, 195, 0.6);
+  color: var(--ice-text);
+}
+.basis-estimate {
+  border-style: dashed;
+  color: var(--muted);
+}
+.cost-refs {
+  font-family: var(--mono);
+  font-size: 0.75em;
+  margin-left: 2px;
+}
+.cost-refs a,
+.cost-sources a {
+  color: var(--salmon-text);
+}
+.cost-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 22px;
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 100ch;
+}
+.cost-sources li:target {
+  outline: 1px solid var(--salmon);
+  outline-offset: 4px;
+}
+.costs-inputs .panel {
+  border: 1px solid var(--line);
+  max-width: 900px;
+}
+
 /* Compare */
 .compare {
   display: grid;

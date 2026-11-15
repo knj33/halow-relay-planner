@@ -47,7 +47,6 @@ export function ResultsPanel({ nodes, labels, net, shownLinks, analysis, plan, i
   const failed = shownLinks.filter((l) => l.result.status === 'fail');
   const marginal = shownLinks.filter((l) => l.result.status === 'marginal');
   const unused = relays.filter((r) => r.enabled && net.connected && !net.route.includes(r.id));
-  const mesh = analysis?.strategies.find((s) => s.id === 'mesh');
 
   if (!inputsValid) {
     return (
@@ -85,10 +84,6 @@ export function ResultsPanel({ nodes, labels, net, shownLinks, analysis, plan, i
             <div>
               <dt className="cap">Crew path</dt>
               <dd className="num">{walk ? fmtKm(walk.lengthM, 1) : '–'}</dd>
-            </div>
-            <div>
-              <dt className="cap">Coverage</dt>
-              <dd className="num">{mesh ? `${mesh.coveragePct.toFixed(0)} %` : '–'}</dd>
             </div>
           </dl>
           <p className="body">

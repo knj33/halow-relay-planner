@@ -17,6 +17,10 @@ import {
   modelAssumptions,
   pickSatellite,
   relayUnitUsd,
+  COST_SOURCES,
+  MARS_COST_BASIS,
+  MARS_LANDED_USD_PER_KG,
+  VISIBLE_BODIES,
 } from '../src/engine';
 import { gridPointsFor, maxAreaM } from '../src/engine/area';
 import { engineSupports, loadTerrainFromEngine, probeEngine } from '../src/native/engine';
@@ -81,6 +85,19 @@ describe('Mars defaults', () => {
     expect(isCostValid(c)).toBe(true);
     expect(c.deliveryUsdPerKg).toBeGreaterThan(defaultCostModel('moon').deliveryUsdPerKg);
     expect(relayUnitUsd(c)).toBe(c.relayHardwareUsd + c.relayMassKg * c.deliveryUsdPerKg);
+  });
+
+  it('derives delivery from Mars 2020 and cites a listed source for every basis entry', () => {
+    expect(defaultCostModel('mars').deliveryUsdPerKg).toBe(MARS_LANDED_USD_PER_KG);
+    expect(MARS_LANDED_USD_PER_KG).toBe(2_634_000);
+    const ids = new Set(COST_SOURCES.map((s) => s.id));
+    for (const b of Object.values(MARS_COST_BASIS)) for (const r of b!.refs) expect(ids.has(r)).toBe(true);
+    expect(COST_SOURCES.every((s) => s.url.startsWith('https://'))).toBe(true);
+  });
+
+  it('is the only body offered in the UI, with Earth and the Moon kept in the engine', () => {
+    expect(VISIBLE_BODIES).toEqual(['mars']);
+    expect(BODY_IDS).toContain('earth');
   });
 
   it('has an illustrative orbiter snapshot with at least one satellite above the mask on open ground', () => {

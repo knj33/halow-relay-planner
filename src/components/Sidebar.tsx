@@ -1,4 +1,4 @@
-import { areaLimitsFor, BODIES, CONSERVATIVE_SAFETY, COST_FIELDS, MODERATE_SAFETY, RADIO_FIELDS, SAFETY_FIELDS, maxAreaM, maxFreeSpaceRangeM, isRadioValid } from '../engine';
+import { areaLimitsFor, BODIES, COMPARISON_ONLY, CONSERVATIVE_SAFETY, COST_FIELDS, MODERATE_SAFETY, RADIO_FIELDS, SAFETY_FIELDS, maxAreaM, maxFreeSpaceRangeM, isRadioValid } from '../engine';
 import type { CostField, GeoNode, SafetySettings } from '../engine';
 import { formatGeo, localToGeo } from '../engine/terrain/geo';
 import { fmtKm } from '../format';
@@ -330,19 +330,20 @@ export function CostPanel() {
   const resetCost = useStore((s) => s.resetCost);
   const backhaul = useStore((s) => s.backhaul);
   const setBackhaul = useStore((s) => s.setBackhaul);
-  const groups = [...new Set(COST_FIELDS.map((f) => f.group))];
+  const fields = COST_FIELDS.filter((f) => !COMPARISON_ONLY.has(f.key));
+  const groups = [...new Set(fields.map((f) => f.group))];
   const field = (f: CostField) => <NumberField key={f.key} label={f.label} unit={f.unit} value={cost[f.key]} min={f.min} max={f.max} onChange={(v) => setCost({ [f.key]: v })} />;
   return (
     <section className="panel" aria-labelledby="cost-h">
       <h2 id="cost-h">Cost &amp; backhaul inputs</h2>
       <div className="callout">
-        <strong>Placeholder figures.</strong> Not quotes or mission estimates. Replace them with your own numbers before drawing conclusions.
+        <strong>Not quotes or mission estimates.</strong> Delivery per kilogram is derived from Mars 2020; most prices are team estimates (see “Where the numbers come from”). Replace them with your own numbers before drawing conclusions.
       </div>
       {groups.map((g) => (
         <details key={g} className="sub" open={g === 'Scenario'}>
           <summary>{g}</summary>
           <div className="field-grid">
-            {COST_FIELDS.filter((f) => f.group === g).map(field)}
+            {fields.filter((f) => f.group === g).map(field)}
             {g === 'Base station' && (
               <NumberField label="Min. satellite elevation" unit="°" value={backhaul.minElevationDeg} min={0} max={80} step={1} onChange={(v) => setBackhaul({ minElevationDeg: v })} />
             )}
@@ -350,7 +351,7 @@ export function CostPanel() {
         </details>
       ))}
       <button type="button" className="link-btn" onClick={resetCost}>
-        Restore placeholder costs
+        Restore default costs
       </button>
     </section>
   );

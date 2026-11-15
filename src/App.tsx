@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePresentation } from './present/state';
 import { AssumptionsPanel } from './components/AssumptionsPanel';
-import { ComparePanel } from './components/ComparePanel';
+import { CostsPage } from './components/CostsPage';
 import { EnginePanel } from './components/EnginePanel';
 import { EnginePrompt } from './components/EnginePrompt';
 import { ResultsPanel } from './components/ResultsPanel';
@@ -14,7 +14,7 @@ import type { SafetyLayer, SimView } from './components/SurveyMap';
 import { Survey3D } from './components/Survey3D';
 import {
   BODIES,
-  BODY_IDS,
+  VISIBLE_BODIES,
   areaLimitsFor,
   analyzeNetwork,
   evaluateNetwork,
@@ -90,10 +90,10 @@ function readMotion(): MotionMode {
 }
 const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-type Tab = 'plan' | 'compare' | 'assumptions' | 'engine';
+type Tab = 'plan' | 'costs' | 'assumptions' | 'engine';
 const TABS: [Tab, string][] = [
   ['plan', 'Plan'],
-  ['compare', 'Compare'],
+  ['costs', 'Costs'],
   ['assumptions', 'Assumptions'],
   ['engine', 'Engine'],
 ];
@@ -504,6 +504,10 @@ export function App() {
         s.setNotice({ kind: 'error', text: `Import rejected: ${res.errors.slice(0, 4).join(' ')}` });
         return;
       }
+      if (!VISIBLE_BODIES.includes(res.state.body)) {
+        s.setNotice({ kind: 'error', text: `Import rejected: this planner is set up for ${VISIBLE_BODIES.map((b) => BODIES[b].name).join(' and ')} only, and the file is a ${BODIES[res.state.body].name} plan.` });
+        return;
+      }
       await s.importState(res.state);
       s.setNotice({ kind: 'info', text: `Imported ${res.state.nodes.length} node(s) for ${BODIES[res.state.body].name}. ${res.warnings.join(' ')}` });
     } catch {
@@ -511,7 +515,8 @@ export function App() {
     }
   };
 
-  const coverage = s.overlay === 'off' || !analysis ? null : analysis.coverage[s.overlay];
+  // The comparison's coverage overlay is no longer offered; the map shows the crew safety layer instead.
+  const coverage = null;
   const outsideCount = converted.outside.length;
   const running = s.plan.status === 'running';
   const name = (id: string) => labels.get(id) ?? id;
@@ -619,13 +624,15 @@ export function App() {
               </button>
             ))}
           </div>
-          <div className="body-switch" role="radiogroup" aria-label="Celestial body">
-            {BODY_IDS.map((b) => (
-              <button key={b} type="button" role="radio" aria-checked={body === b} className="cap-link" onClick={() => void s.setBody(b)}>
-                {BODIES[b].name}
-              </button>
-            ))}
-          </div>
+          {VISIBLE_BODIES.length > 1 && (
+            <div className="body-switch" role="radiogroup" aria-label="Celestial body">
+              {VISIBLE_BODIES.map((b) => (
+                <button key={b} type="button" role="radio" aria-checked={body === b} className="cap-link" onClick={() => void s.setBody(b)}>
+                  {BODIES[b].name}
+                </button>
+              ))}
+            </div>
+          )}
         </nav>
 
         <div className="mast-site">
@@ -1018,22 +1025,16 @@ export function App() {
                 <CrewPanelM />
                 <AreaPanelM />
                 <RadioPanelM />
-                <CostPanelM />
               </div>
             </section>
           </>
         )}
 
-        {tab === 'compare' && (
+        {tab === 'costs' && (
           <div className="page-section">
-            {area ? (
-              <ComparePanel analysis={analysis} busy={busy} cost={cost} overlay={s.overlay} setOverlay={s.setOverlay} inputsValid={inputsValid && plannerValid && gridReady} />
-            ) : (
-              <div className="readout-empty">
-                <h2 className="cap hi">No planning area yet</h2>
-                <p className="body">The cost and coverage comparison needs at least one placed node.</p>
-              </div>
-            )}
+            <CostsPage body={body} cost={cost}>
+              <CostPanelM />
+            </CostsPage>
           </div>
         )}
         {tab === 'assumptions' && (

@@ -82,11 +82,9 @@ export function modelAssumptions(body: BodyId, terrain?: TerrainMeta | null): As
       ],
     },
     {
-      title: 'Cost and comparison',
+      title: 'Cost',
       items: [
-        'All cost figures are editable placeholders for comparing architectures on equal footing. They are not quotes or mission estimates. Operating costs, service fees, power and maintenance are excluded.',
-        'Coverage is the share of sampled cells from which a client radio can close a link, by the same link model, to the network connected to endpoint A.',
-        'The tall-mast alternative reuses the same radio and placement heuristic with a taller antenna; it is a like-for-like geometry comparison, not a cellular network design.',
+        'All cost figures are editable. They are not quotes or mission estimates. Each unit costs hardware + installation + mass × delivery per kilogram. On Mars, delivery per kilogram is derived from Mars 2020 (about US$2.7 billion for a 1,025 kg rover, so it errs high) and the unit prices are team estimates; the Costs page lists the basis and source of each. Operating costs, service fees, power and maintenance are excluded.',
       ],
     },
   ];
