@@ -144,6 +144,19 @@ export function App() {
   // While a slide covers the planner, nothing underneath renders.
   const appVisible = !presenting || presentingLive;
   const [tab, setTab] = useState<Tab>('plan');
+  // A masthead tab click takes the viewer to that section (once it has rendered), so nobody has to scroll down to find it.
+  const mainRef = useRef<HTMLElement>(null);
+  const [tabJump, setTabJump] = useState(0);
+  const openTab = useStableCallback((id: Tab) => {
+    setTab(id);
+    setTabJump((n) => n + 1);
+  });
+  useEffect(() => {
+    if (!tabJump) return;
+    const behavior: ScrollBehavior = reducedMotion() ? 'auto' : 'smooth';
+    if (tab === 'plan') window.scrollTo({ top: 0, behavior });
+    else mainRef.current?.scrollIntoView({ block: 'start', behavior });
+  }, [tabJump]);
   const [view, setView] = useState<View>('globe');
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [busy, setBusy] = useState(false);
@@ -624,7 +637,7 @@ export function App() {
         <nav className="mast-nav" aria-label="Sections">
           <div role="tablist" aria-label="Sections" className="mast-tabs">
             {TABS.map(([id, label]) => (
-              <button key={id} type="button" role="tab" id={`tab-${id}`} aria-selected={tab === id} aria-controls={`panel-${id}`} className="cap-link" onClick={() => setTab(id)}>
+              <button key={id} type="button" role="tab" id={`tab-${id}`} aria-selected={tab === id} aria-controls={`panel-${id}`} className="cap-link" onClick={() => openTab(id)}>
                 {label}
               </button>
             ))}
@@ -967,7 +980,7 @@ export function App() {
         </div>
       </section>
 
-      <main id={`panel-${tab}`} role="tabpanel" aria-labelledby={`tab-${tab}`} className="content">
+      <main ref={mainRef} id={`panel-${tab}`} role="tabpanel" aria-labelledby={`tab-${tab}`} className="content">
         {tab === 'plan' && (
           <>
             <div className="plan-layout">
