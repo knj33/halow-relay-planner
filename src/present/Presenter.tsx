@@ -151,7 +151,8 @@ export default function Presenter() {
   // ---------- live slides let the planner show through ----------
   useEffect(() => {
     setLive(live);
-    if (live) setHandOff(true);
+    // Next/Prev keep driving the deck on a live slide, as on any other; L hands the keys to the planner.
+    if (live) setHandOff(false);
   }, [live, setLive]);
   useEffect(() => () => setLive(false), [setLive]);
 

@@ -187,11 +187,10 @@ export const smmsDeck: Deck = {
       id: 'demo',
       title: 'Live demo',
       kind: 'live',
+      // Each build plays only when the presenter presses Next: the failure, then the 3D view.
       steps: 2,
-      // If nobody presses Next within 20 s, the next build plays by itself (the failure, then the 3D view).
-      autoAdvanceMs: 20000,
       notes:
-        'Live, preloaded when the deck opened. The real planner on the 200 km Arcadia Planitia plan: 63 relays, two independent routes. Next (or wait 20 s): a relay on the route goes dark; the radio route and the crew path re-plan, the dead part turns red and the new route glows green. Next (or wait 20 s): the 3D relief with the hills raised 10×, flying once around the area (about 16 s); the red and green routes show there too. PageDown or L then → to move on.',
+        'Live, preloaded when the deck opened. The real planner on the 200 km Arcadia Planitia plan: 63 relays, two independent routes. Next: a relay on the route goes dark; the radio route and the crew path re-plan, the dead part turns red and the new route glows green. Next: the 3D relief with the hills raised 10×, flying once around the area (about 16 s); the red and green routes show there too. Next again moves on. L hands the arrow keys to the planner.',
       onEnter: async (app) => {
         demoStep = 0;
         await app.ensureDemo();
