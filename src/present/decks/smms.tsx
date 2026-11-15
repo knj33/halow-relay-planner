@@ -58,6 +58,38 @@ export const smmsDeck: Deck = {
         </>
       ),
     },
+    hardwareSlide,
+    {
+      id: 'os',
+      title: 'SSA Mesh Oriented OS',
+      transition: 'fade',
+      notes:
+        'Our operating system, SSA Space 0.1, the Surface Station Appliance, shown booted in a QEMU/KVM virtual machine on Earth (an analog demo, not flight-qualified). Three OS banks (A, B, C); it runs from initramfs and the banks stay read-only. Iridium gives it a way to connect over satellite. In this run no radio or modem is attached, so those lines show searching/offline.',
+      render: ({ lang }) => (
+        <Frame title="SSA Mesh Oriented OS">
+          <div className="pz-os">
+            <figure className="pz-os-shot">
+              <img src={`${import.meta.env.BASE_URL}present/ssa-os.png`} alt="SSA Space 0.1, Surface Station Appliance, booted in a QEMU/KVM virtual machine: status of OS banks, HaLow, Meshtastic mesh, Iridium, AI bank and message queue, with its command list." />
+              <figcaption>SSA Space 0.1 · Surface Station Appliance, booted in QEMU/KVM</figcaption>
+            </figure>
+            <ul className="pz-os-points">
+              <li>
+                <b>A · B · C</b>
+                <span>{t(lang, '3 ცალი OS Bank', '3 OS banks')}</span>
+              </li>
+              <li>
+                <b>Read-only</b>
+                <span>{t(lang, 'მუშაობს initramfs-დან, bank-ები read-only რჩება', 'Runs from initramfs; the banks stay read-only')}</span>
+              </li>
+              <li>
+                <b>Iridium</b>
+                <span>{t(lang, 'სატელიტზე დაკავშირების შესაძლებლობა', 'Can connect over satellite')}</span>
+              </li>
+            </ul>
+          </div>
+        </Frame>
+      ),
+    },
     {
       id: 'mesh-example',
       title: 'Mesh System Example',
@@ -148,38 +180,6 @@ export const smmsDeck: Deck = {
               ],
             )}
           />
-        </Frame>
-      ),
-    },
-    hardwareSlide,
-    {
-      id: 'os',
-      title: 'SSA Mesh Oriented OS',
-      transition: 'fade',
-      notes:
-        'Our operating system, SSA Space 0.1, the Surface Station Appliance, shown booted in a QEMU/KVM virtual machine on Earth (an analog demo, not flight-qualified). Three OS banks (A, B, C); it runs from initramfs and the banks stay read-only. Iridium gives it a way to connect over satellite. In this run no radio or modem is attached, so those lines show searching/offline.',
-      render: ({ lang }) => (
-        <Frame title="SSA Mesh Oriented OS">
-          <div className="pz-os">
-            <figure className="pz-os-shot">
-              <img src={`${import.meta.env.BASE_URL}present/ssa-os.png`} alt="SSA Space 0.1, Surface Station Appliance, booted in a QEMU/KVM virtual machine: status of OS banks, HaLow, Meshtastic mesh, Iridium, AI bank and message queue, with its command list." />
-              <figcaption>SSA Space 0.1 · Surface Station Appliance, booted in QEMU/KVM</figcaption>
-            </figure>
-            <ul className="pz-os-points">
-              <li>
-                <b>A · B · C</b>
-                <span>{t(lang, '3 ცალი OS Bank', '3 OS banks')}</span>
-              </li>
-              <li>
-                <b>Read-only</b>
-                <span>{t(lang, 'მუშაობს initramfs-დან, bank-ები read-only რჩება', 'Runs from initramfs; the banks stay read-only')}</span>
-              </li>
-              <li>
-                <b>Iridium</b>
-                <span>{t(lang, 'სატელიტზე დაკავშირების შესაძლებლობა', 'Can connect over satellite')}</span>
-              </li>
-            </ul>
-          </div>
         </Frame>
       ),
     },
